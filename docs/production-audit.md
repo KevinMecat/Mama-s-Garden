@@ -104,3 +104,6 @@ una actualización compatible del lockfile. No confundir ambos alcances.
 Tras actualizar: 34 pruebas API correctas, Ruff y `pip check` correctos; frontend
 con lint, tipos y build de producción correctos usando Next.js 16.4.2. La
 verificación remota del nuevo lockfile se consulta en GitHub Actions.
+La validación Linux detectó dos dependencias opcionales `@emnapi` omitidas por
+el npm local anterior. Se regeneró el lockfile con npm 11.19.0 y se fijó esa
+versión en `packageManager` y en CI para evitar diferencias entre instaladores.
