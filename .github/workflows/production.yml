@@ -50,6 +50,9 @@ jobs:
           python scripts/verify_https.py fincamamasgarden.com --resolve 127.0.0.1 --ca deploy/tls/fullchain.pem
           docker compose --env-file .env.ci -f docker-compose.prod.yml exec -T proxy nginx -c /tmp/default.conf -t
           docker compose --env-file .env.ci -f docker-compose.prod.yml exec -T api python manage.py check --deploy --tag security --fail-level WARNING
+      - name: Redacted CI diagnostics
+        if: failure()
+        run: python scripts/ci_diagnostics.py
       - name: Cleanup ephemeral stack
         if: always()
         run: docker compose --env-file .env.ci -f docker-compose.prod.yml down --volumes --remove-orphans

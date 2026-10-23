@@ -11,7 +11,7 @@ x-api: &api
   read_only: true
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
-  tmpfs: [/tmp:rw,noexec,nosuid,size=64m]
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
   pids_limit: 128
   volumes: [media:/app/apps/api/media]
   networks: [app, data]
@@ -105,7 +105,7 @@ services:
     volumes:
       - ./deploy/tls:/etc/nginx/tls:ro
       - ./deploy/acme:/var/www/acme:ro
-    tmpfs: [/tmp:rw,noexec,nosuid,size=64m]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
     networks: [edge, app]
     depends_on:
       web: {condition: service_healthy}
@@ -124,7 +124,7 @@ services:
       NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/bootstrap
     ports: ["80:8080"]
     volumes: [./deploy/acme:/var/www/acme:ro]
-    tmpfs: [/tmp:rw,noexec,nosuid,size=16m]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
     networks: [edge]
 volumes:
   postgres_data:
