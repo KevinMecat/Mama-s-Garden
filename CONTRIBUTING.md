@@ -55,6 +55,8 @@ PostgreSQL propias, completar `DATABASE_URL` y conservarlas fuera de Git.
 Todos los `.env.*`, incluso `.env.example`, están excluidos sin excepciones.
 Requisitos: Python 3.13, Node 24, Docker y Gitleaks 8.30.1. Los hooks requieren
 `python` y `gitleaks` en PATH; en Windows, usar Git Bash.
+Si Gitleaks está fuera de PATH, configurar su ruta local con
+`git config security.gitleaksPath /ruta/absoluta/gitleaks`.
 
 ```bash
 docker compose up --build -d db

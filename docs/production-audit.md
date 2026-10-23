@@ -67,3 +67,9 @@ ausencia absoluta de secretos, especialmente dentro de binarios.
 - Primera ejecución remota de CI: `api` y `policy-and-secrets` correctos, con
   pruebas sobre PostgreSQL 17. `web` detectó la falta de generación de tipos en
   un clon limpio; se corrigió el script `typecheck` para ejecutar `next typegen`.
+- Verificación posterior del commit `d125133`: los tres jobs (`api`, `web`,
+  `policy-and-secrets`) finalizaron correctamente, incluido el build de producción
+  del frontend y las pruebas contra PostgreSQL 17.
+  Evidencia: https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39887938045
+- Gitleaks instalado fuera del repositorio con checksum verificado; el hook usa
+  `security.gitleaksPath` local para funcionar sin modificar el PATH del usuario.
