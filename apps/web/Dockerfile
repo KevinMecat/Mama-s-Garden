@@ -20,7 +20,8 @@ RUN find .next -type f -name '*.map' -delete
 FROM base AS production-dependencies
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force \
+    && find node_modules -type d -name '@types' -prune -exec rm -rf '{}' +
 COPY scripts/audit-production.mjs scripts/audit-production.mjs
 RUN node scripts/audit-production.mjs dependencies
 

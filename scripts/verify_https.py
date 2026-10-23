@@ -8,6 +8,8 @@ from pathlib import Path
 
 
 def main():
+    if not __debug__:
+        raise SystemExit("No ejecutar el verificador con optimización de Python.")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("domain")
     parser.add_argument("--resolve", help="Test-only address; default uses public DNS")

@@ -174,6 +174,8 @@ La exclusión no se deduce únicamente de `devDependencies`:
 
 1. `npm ci --omit=dev` instala un árbol nuevo en una etapa independiente;
    la imagen final usa ese árbol y no copia node_modules del builder.
+   Se retiran también los paquetes solo de declaraciones `@types`, que npm puede
+   instalar mediante peers opcionales de dependencias productivas.
 2. Un gate inspecciona los nombres de paquetes instalados en runtime y falla si
    encuentra cualquiera de las cinco entradas o una dependencia directa de desarrollo.
 3. Durante la compilación se generan mapas de cliente/servidor y trazas NFT;
