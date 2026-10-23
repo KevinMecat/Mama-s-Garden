@@ -159,6 +159,18 @@ El resultado definitivo de imágenes/TLS efímero lo determina el check requerid
 `production-security`, ejecutado en Linux con Docker. Los valores y claves
 efímeros de CI no se publican como artifacts.
 
+**Evidencia de integración verificada:** implementación
+`cc569827c00d58b94a3496793ae999613dead883`,
+[production-security correcto](https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39894248749),
+[calidad correcta](https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39894248770) y
+[reglas de PR correctas](https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39894248761).
+Linux auditó 230 mapas/65 trazas de build y 31 trazas en runtime, sin las
+dependencias excluidas; el runtime no contiene mapas públicos. Se verificaron
+usuarios no root, PostgreSQL/migraciones, Nginx, 301, TLS efímero, cabeceras en
+2xx/4xx, CSP/nonce, cookies y forwarding. Django `check --deploy --tag security
+--fail-level WARNING` terminó sin incidencias. Esta evidencia no acredita DNS,
+CA pública ni renovación del dominio en un servidor real.
+
 ### Mitigación y Riesgo Aceptado
 
 Identificador: **DEV-2026-10-22-01**. Responsable propuesto: **KevinMecat**.
@@ -229,7 +241,8 @@ dos comprobaciones públicas pendientes de certificado y renovación.
 - [x] Configuración y gates técnicos preparados; secretos fuera de Git/build/logs.
 - [x] Preflight probado ante ausencia de variables, defaults e interpolación.
 - [x] Build local y mapas/trazas de exclusión revisados; archivos de release preparados.
-- [ ] Check `production-security` verde para el SHA/digests exactos de la release aprobada.
+- [x] Check `production-security` verde para el SHA de implementación citado arriba.
+- [ ] Registrar SHA/digests exactos de la release final aprobada por los responsables.
 - [ ] Certificado CA pública y renovación automática verificados en el servidor real.
 - [ ] Subdominios revisados antes de activar política HSTS/preload en el dominio.
 - [ ] Branch Protection aplicada y comprobada, sin bypass de administradores.
