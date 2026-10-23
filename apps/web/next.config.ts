@@ -4,6 +4,10 @@ const apiInternalUrl =
   process.env.API_INTERNAL_URL ?? "http://api:8000";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  poweredByHeader: false,
+  productionBrowserSourceMaps: process.env.BUILD_AUDIT_MAPS === "1",
+  experimental: { serverSourceMaps: process.env.BUILD_AUDIT_MAPS === "1" },
   skipTrailingSlashRedirect: true,
   images: {
     formats: ["image/avif", "image/webp"],

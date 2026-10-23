@@ -11,3 +11,9 @@ WEB_PORT=3000
 POSTGRES_PORT=5432
 # Completar URL PostgreSQL usando las credenciales anteriores.
 DATABASE_URL=
+
+# Producción: ajustar también los valores anteriores. No usar DEBUG=True ni localhost.
+DOMAIN=fincamamasgarden.com
+DJANGO_SETTINGS_MODULE=config.settings.production
+NEXT_PUBLIC_SITE_URL=https://fincamamasgarden.com
+API_INTERNAL_URL=http://api:8000

@@ -39,6 +39,11 @@ La API usa el puerto `8000` tanto dentro de Docker como en el host. Entre conten
 
 ## Verificacion
 
+El despliegue de producción usa `docker-compose.prod.yml`; consultar
+[`docs/production-deployment.md`](docs/production-deployment.md) y ejecutar
+`bash scripts/verify-prod-env.sh --env-file .env.production` antes de construir.
+El Compose de este README se conserva exclusivamente para desarrollo.
+
 ```powershell
 docker compose ps
 docker compose exec -T api python manage.py check

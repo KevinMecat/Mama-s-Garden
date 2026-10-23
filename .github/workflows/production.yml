@@ -1,0 +1,55 @@
+name: production
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: production-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  production-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PROD_ENV_FILE: .env.ci
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Test environment validation without secrets
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Generate ephemeral fixture and test certificate
+        run: |
+          python scripts/create_ci_prod_env.py
+          mkdir -p deploy/tls deploy/acme
+          openssl req -x509 -newkey rsa:3072 -nodes -days 2 \
+            -subj '/CN=fincamamasgarden.com' -addext 'subjectAltName=DNS:fincamamasgarden.com' \
+            -keyout deploy/tls/privkey.pem -out deploy/tls/fullchain.pem 2>/dev/null
+          sudo chown 101:101 deploy/tls/privkey.pem
+          sudo chmod 400 deploy/tls/privkey.pem
+          chmod 644 deploy/tls/fullchain.pem
+          python scripts/verify_prod_env.py --env-file .env.ci
+          docker compose --env-file .env.ci -f docker-compose.prod.yml config --quiet
+      - name: Build isolated production images
+        run: docker compose --env-file .env.ci -f docker-compose.prod.yml build
+      - name: Verify final image inventory and non-root identities
+        run: |
+          docker run --rm --entrypoint node mamas-garden-web:local scripts/audit-production.mjs runtime
+          docker run --rm --entrypoint python mamas-garden-api:local /app/scripts/audit_python_runtime.py
+          test "$(docker image inspect mamas-garden-web:local --format '{{.Config.User}}')" = node
+          test "$(docker image inspect mamas-garden-api:local --format '{{.Config.User}}')" = finca
+          test "$(docker image inspect mamas-garden-proxy:local --format '{{.Config.User}}')" = 101:101
+      - name: Start production stack with ephemeral PostgreSQL
+        run: docker compose --env-file .env.ci -f docker-compose.prod.yml up -d --wait --wait-timeout 180
+      - name: Validate TLS, headers, private media and secure Django settings
+        run: |
+          python scripts/verify_https.py fincamamasgarden.com --resolve 127.0.0.1 --ca deploy/tls/fullchain.pem
+          docker compose --env-file .env.ci -f docker-compose.prod.yml exec -T proxy nginx -c /tmp/default.conf -t
+          docker compose --env-file .env.ci -f docker-compose.prod.yml exec -T api python manage.py check --deploy --tag security --fail-level WARNING
+      - name: Cleanup ephemeral stack
+        if: always()
+        run: docker compose --env-file .env.ci -f docker-compose.prod.yml down --volumes --remove-orphans

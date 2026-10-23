@@ -1,0 +1,40 @@
+name: pr-lint
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+jobs:
+  conventional-pr:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Validate title, branch and each proposed commit
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import os, re, subprocess
+          subject = re.compile(r'(feat|fix|refactor|docs|chore|style|test|perf)\((root|ui|api|auth|db|docker|config)\): \S.*')
+          branch = re.compile(r'(feat|fix|chore)/[a-z0-9]+(?:-[a-z0-9]+)*')
+          def validate(value):
+              if not subject.fullmatch(value) or value != value.lower():
+                  raise SystemExit('Título o commit inválido: consultar CONTRIBUTING.md.')
+          validate(os.environ['PR_TITLE'])
+          if not branch.fullmatch(os.environ['HEAD_BRANCH']):
+              raise SystemExit('Rama inválida: consultar CONTRIBUTING.md.')
+          base, head = os.environ['BASE_SHA'], os.environ['HEAD_SHA']
+          if not all(re.fullmatch(r'[a-f0-9]{40}', sha) for sha in (base, head)):
+              raise SystemExit('Referencia Git inválida.')
+          for value in subprocess.check_output(['git', 'log', '--format=%s', f'{base}..{head}']).decode().splitlines():
+              validate(value)
+          print('Título, rama y commits: correctos.')
+          PY
