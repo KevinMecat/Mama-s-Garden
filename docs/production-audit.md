@@ -41,10 +41,16 @@ GitHub CLI no tiene sesión iniciada; Git HTTPS puede usar credenciales distinta
    copias de seguridad y restauración probada, observabilidad y rollback.
 6. Exigir PR, revisión y checks `policy-and-secrets`, `api`, `web` mediante
    protección/ruleset remoto. No está aplicada ni verificada desde esta sesión.
-7. Falta una auditoría completa de vulnerabilidades de dependencias/imágenes;
-   las versiones Python usan rangos y necesitan una estrategia de bloqueo.
+7. Las imágenes de contenedor todavía no se han auditado; las versiones Python
+   usan rangos y necesitan una estrategia de bloqueo reproducible.
+8. La auditoría completa de npm también detectó hallazgos de severidad alta en
+   herramientas de desarrollo. La cadena `eslint-config-next` → `fast-glob` →
+   `micromatch` → `braces` usa `braces@3.0.3`, sin versión corregida publicada al
+   consultar el registro. No se aplicó el downgrade mayor sugerido por npm.
+   Tratar entradas de glob no confiables como riesgo pendiente de la cadena de build.
 
-Los hooks fallan si `python` o `gitleaks` no están en PATH. Activar con
+Los hooks requieren `python` en PATH y Gitleaks en PATH o configurado mediante
+`security.gitleaksPath`. Activar con
 `git config core.hooksPath .githooks` en cada clon. Ningún escáner garantiza
 ausencia absoluta de secretos, especialmente dentro de binarios.
 
@@ -73,3 +79,28 @@ ausencia absoluta de secretos, especialmente dentro de binarios.
   Evidencia: https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39887938045
 - Gitleaks instalado fuera del repositorio con checksum verificado; el hook usa
   `security.gitleaksPath` local para funcionar sin modificar el PATH del usuario.
+
+## Correcciones de dependencias
+
+La auditoría adicional detectó una vulnerabilidad crítica y dos altas en las
+dependencias de producción del frontend, además de hallazgos en DRF y Pillow.
+Se actualizó Next.js/eslint-config-next a 16.4.2 y se corrigieron dependencias
+transitivas mediante el lockfile. `npm audit --omit=dev` finalizó sin hallazgos.
+CI ahora bloquea vulnerabilidades de producción de severidad alta o crítica.
+
+Se elevaron DRF a `>=3.18.3,<3.19` y Pillow a `>=13.0.0,<14`; la instalación local
+usa DRF 3.18.3 y Pillow 13.0.0. `pip-audit` sobre el entorno instalado finalizó
+sin vulnerabilidades conocidas. Notas oficiales consultadas:
+[DRF](https://www.django-rest-framework.org/community/release-notes/) y
+[Pillow 13](https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html).
+
+Estos resultados reflejan las bases de advisories consultadas durante la sesión,
+no garantizan ausencia de vulnerabilidades desconocidas ni cubren las imágenes.
+La auditoría sin `--omit=dev` no está limpia; los hallazgos de herramientas de
+desarrollo se detallan en los bloqueos: quedan cinco entradas altas de la misma
+cadena de dependencias sin parche. Se corrigió además `brace-expansion` mediante
+una actualización compatible del lockfile. No confundir ambos alcances.
+
+Tras actualizar: 34 pruebas API correctas, Ruff y `pip check` correctos; frontend
+con lint, tipos y build de producción correctos usando Next.js 16.4.2. La
+verificación remota del nuevo lockfile se consulta en GitHub Actions.
