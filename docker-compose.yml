@@ -24,6 +24,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      target: development
     working_dir: /workspace/apps/api
     command:
       ["python", "manage.py", "runserver", "0.0.0.0:8000"]
@@ -56,6 +57,7 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      target: development
     working_dir: /app
     command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
     environment:

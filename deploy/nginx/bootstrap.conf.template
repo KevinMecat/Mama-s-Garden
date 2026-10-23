@@ -1,0 +1,19 @@
+worker_processes auto;
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+events { worker_connections 128; }
+http {
+    server_tokens off;
+    access_log off;
+    client_body_temp_path /tmp/client;
+    server {
+        listen 8080 default_server;
+        server_name ${DOMAIN};
+        location ^~ /.well-known/acme-challenge/ {
+            root /var/www/acme;
+            default_type text/plain;
+            try_files $uri =404;
+        }
+        location / { return 301 https://${DOMAIN}$request_uri; }
+    }
+}

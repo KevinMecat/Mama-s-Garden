@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { connection } from "next/server";
 
 import { PwaRegistration } from "@/components/pwa-registration";
 
@@ -46,7 +47,8 @@ export const viewport: Viewport = {
   themeColor: "#484927",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  await connection();
   return (
     <html
       lang="es"

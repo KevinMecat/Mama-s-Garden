@@ -21,3 +21,6 @@ audit-reports
 **/.next
 **/coverage
 media
+deploy/tls
+deploy/acme
+Mama_Garden_Brand_Kit*
