@@ -22,7 +22,7 @@ async function requestHeaders() {
   return {
     Cookie: cookieStore.toString(),
     ...(process.env.NODE_ENV === "production"
-      ? { "X-Forwarded-Proto": "https", Host: process.env.PUBLIC_HOST ?? "fincamamasgarden.com" }
+      ? { "X-Forwarded-Proto": "https" }
       : {}),
   };
 }

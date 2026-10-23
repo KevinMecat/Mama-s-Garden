@@ -4,6 +4,7 @@ import runpy
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *
+from .base import ALLOWED_HOSTS as BASE_ALLOWED_HOSTS
 from .base import MIDDLEWARE as BASE_MIDDLEWARE
 from .base import REPOSITORY_ROOT
 from .base import STORAGES as BASE_STORAGES
@@ -13,6 +14,7 @@ if _validator["validate_env"](os.environ):
     raise ImproperlyConfigured("Entorno de producción inválido; ejecutar verify-prod-env.sh.")
 
 DEBUG = False
+ALLOWED_HOSTS = [*BASE_ALLOWED_HOSTS, "api"]
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

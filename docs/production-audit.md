@@ -133,6 +133,9 @@ Una ejecución con certificado efímero de CI no certifica el sitio público.
   con includeSubDomains/preload y validación del entorno al importar settings.
   Solo se confía en `X-Forwarded-Proto` porque API/DB no publican puertos y los
   contenedores autorizados comparten una red privada explícita.
+  Se admite además el host interno fijo `api` para fetch SSR: Node no permite
+  sustituir Host con fetch. El proxy público solo admite el dominio canónico.
+  El socket administrativo de Gunicorn está desactivado en el runtime read-only.
 - API, web y proxy se ejecutan sin root, sin capacidades, con filesystem de solo
   lectura, no-new-privileges y escrituras limitadas a tmpfs/volúmenes identificados.
   Los digests de Node, Python, Nginx y PostgreSQL están fijados. PostgreSQL tampoco

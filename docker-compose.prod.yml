@@ -76,7 +76,6 @@ services:
     environment:
       NODE_ENV: production
       API_INTERNAL_URL: http://api:8000
-      PUBLIC_HOST: ${DOMAIN:?Missing DOMAIN}
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
       - /app/.next/cache:rw,nosuid,uid=1000,gid=1000,size=128m

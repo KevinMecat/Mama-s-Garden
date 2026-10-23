@@ -43,4 +43,4 @@ COPY scripts/audit_python_runtime.py /app/scripts/audit_python_runtime.py
 RUN mkdir -p media && chown finca:finca media && python /app/scripts/audit_python_runtime.py
 USER finca
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "--timeout", "60", "--access-logfile", "/dev/null", "--error-logfile", "-"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "--timeout", "60", "--no-control-socket", "--access-logfile", "/dev/null", "--error-logfile", "-"]
