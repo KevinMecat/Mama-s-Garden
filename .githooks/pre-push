@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+python scripts/check_repository.py
+command -v gitleaks >/dev/null || { echo 'Instalar gitleaks antes de subir.' >&2; exit 1; }
+gitleaks git . --redact --no-banner --max-archive-depth=3 --log-opts="--all"

@@ -1,0 +1,13 @@
+# Copiar a .env y completar con valores propios. No contiene credenciales.
+DJANGO_SECRET_KEY=
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,api
+DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+POSTGRES_DB=finca_mamas_garden
+POSTGRES_USER=finca_app
+POSTGRES_PASSWORD=
+API_PORT=8000
+WEB_PORT=3000
+POSTGRES_PORT=5432
+# Completar URL PostgreSQL usando las credenciales anteriores.
+DATABASE_URL=

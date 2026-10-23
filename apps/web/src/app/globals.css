@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f1e8;
+  --foreground: #30311f;
+  --brand-primary: #484927;
+  --brand-secondary: #6a6a3b;
+  --brand-sage: #b9b392;
+  --brand-cream: #ebe7d6;
+  --brand-paper: #f8f6ee;
+  --brand-ink: #484927;
+  --brand-muted: #68684d;
+  --brand-soft: #ddd9c1;
+  --brand-border: #cbc6a8;
+  --brand-surface: #fbfaf4;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-sage: var(--brand-sage);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-paper: var(--brand-paper);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-border: var(--brand-border);
+  --color-brand-surface: var(--brand-surface);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: Georgia, "Times New Roman", serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: var(--brand-sage);
+  color: var(--brand-primary);
+}
+
+.font-display {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.leaf-glow {
+  position: absolute;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 9999px;
+  background: rgba(185, 179, 146, 0.4);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.leaf-glow-top {
+  top: -8rem;
+  right: -9rem;
+}
+
+.leaf-glow-bottom {
+  bottom: -10rem;
+  left: -8rem;
+}
