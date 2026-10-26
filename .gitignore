@@ -80,6 +80,7 @@ gitleaks-report*
 audit-reports/
 deploy/tls/
 deploy/acme/
+.firebase/
 
 # Editors and operating systems
 .vscode/
