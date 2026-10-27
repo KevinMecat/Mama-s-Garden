@@ -447,3 +447,25 @@ tarifas continúan semanales en USD, sin convertirlas a horas/días ni producir 
 Firma de ejecución técnica: Codex, 27 de octubre de 2026. No constituye firma
 humana ni certificación de aceptación del propietario. Resultado de publicación
 y verificaciones en vivo se registran al cierre de esta entrega.
+
+Primera publicación operativa 0.2.0 verificada a las 19:58 UTC: CLI confirmó
+`Deploy complete!`, 249 archivos, release `1793131088281000`, versión Hosting
+`a81a6a06a850813c`, compilada desde el commit limpio
+`96a9271139874573ad564832a131e8fc92e43b13`. El dominio público y `surco-finca.web.app`
+devolvieron ese SHA y el mismo HTML que el export local. HTTP redirigió con 301;
+HSTS fue de al menos un año, includeSubDomains/preload, junto con DENY, nosniff,
+Referrer-Policy y CSP correctos. El dominio firebase por defecto aplica su propio
+max-age HSTS 31556926, superior al mínimo 31536000 configurado.
+
+La prueba de navegador en vivo confirmó Auth real, rechazo de credenciales demo,
+protección de rutas, denegación anónima y ausencia de errores de ejecución/CSP.
+Las fuentes de ambas reglas publicadas coinciden con las versionadas. El export
+no contiene mapas, perfiles reales, fixtures ni marcadores de emuladores.
+La huella posterior de todos los documentos originales y generaciones/metadatos
+de los 26 objetos es idéntica a la anterior; la cuenta administrativa sigue activa.
+No se hizo una prueba positiva con la contraseña del propietario.
+
+Los ajustes posteriores de metadatos Docker no cambian datos ni el dominio
+operativo. El SHA servido de la última compilación se consulta siempre en
+`/build-info.json`; no se interpreta el HEAD de un commit documental como prueba
+de la versión desplegada. CI valida también el build Docker sin copiar `.git`.
