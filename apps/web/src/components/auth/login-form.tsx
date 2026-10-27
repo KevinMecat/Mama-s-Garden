@@ -41,7 +41,6 @@ export function LoginForm() {
 
   return (
     <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-      {isDemoMode() && <p role="status" className="rounded-xl bg-brand-sage/30 p-4 text-sm">Modo Demostración / Offline. Accede con demo@mamasgarden.com y contraseña demo1234. Usa únicamente datos ficticios; los cambios se guardan en este navegador.</p>}
       <div>
         <label htmlFor="email" className="text-sm font-semibold text-brand-primary">
           Correo electrónico
