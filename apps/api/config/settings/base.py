@@ -50,6 +50,7 @@ LOCAL_APPS = [
     "modules.production.apps.ProductionConfig",
     "modules.payroll.apps.PayrollConfig",
     "modules.reports.apps.ReportsConfig",
+    "modules.workforce.apps.WorkforceConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -162,3 +163,6 @@ SPECTACULAR_SETTINGS = {
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Planning reference only; never a payroll calculation.
+WORKFORCE_DAY_MINUTES = env.int("WORKFORCE_DAY_MINUTES", default=480)
