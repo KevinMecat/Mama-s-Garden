@@ -89,3 +89,15 @@ El catálogo, la producción y las ventas comienzan vacíos. Cada venta genera u
 ## Personal y nómina
 
 Empleados, tarifas, asistencia y períodos comienzan vacíos. La asistencia exige un proyecto y la planilla pagada crea un gasto operativo contabilizado por cada proyecto involucrado. Consulta `docs/architecture/phase-6-payroll.md`.
+
+## Trabajo del personal
+
+Tablero: `/dashboard/workforce`; cierre de jornada: `/dashboard/workforce/close`;
+historial por trabajador: `/dashboard/workforce/history`. El módulo reutiliza
+empleados y proyectos, registra tiempos explícitos y exige revisión administrativa.
+No genera pagos ni modifica asistencias o planillas.
+
+Contrato, permisos, dependencia del PR de infraestructura, pruebas aisladas y
+procedimiento de respaldo/recuperación: [docs/workforce.md](docs/workforce.md).
+Django/PostgreSQL es la fuente de verdad; las configuraciones preliminares de
+Firestore no forman parte de esta integración.

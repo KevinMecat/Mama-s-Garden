@@ -319,3 +319,36 @@ humana ni se certifica un backend inexistente.
 
 **Firma de ejecución técnica:** Codex, 26 de octubre de 2026; preparación y publicación
 frontend realizadas. Procedimiento reproducible: [firebase-hosting.md](firebase-hosting.md).
+
+
+## Módulo de trabajo del personal — 27 de octubre de 2026
+
+Desarrollado en feature/personal-kanban sobre ab045fa; PR #2 dependiente de #1.
+No integrado ni desplegado mientras falten las revisiones exigidas por main.
+El usuario confirmó Django/PostgreSQL como fuente de verdad y ausencia de datos
+operativos en línea; Firestore/Storage preliminares no se modificaron ni importaron.
+
+Migraciones workforce/0001_initial y 0002_worklog_work_date exclusivamente aditivas. Empleados, proyectos,
+asistencia, tarifas, planillas, importes y comprobantes existentes permanecen
+fuera de las escrituras del módulo. Prueba de conservación con fixtures y hash
+de archivo correcta; suite local 51 correctas y 2 de concurrencia omitidas en
+SQLite; CI PostgreSQL final en 9668fcc con 55 correctas, incluidas ambas de concurrencia
+y las pruebas de fecha real distinta de la planificación.
+E2E local automatizado: tres escenarios correctos de jornada completa, escritorio,
+móvil, teclado, arrastre, rechazo de revisión obsoleta, reintento y permisos.
+
+No se verificó respaldo/restauración de una base operativa real: no existe un
+destino operativo en línea confirmado y no se accedió al PostgreSQL local detenido.
+No se presenta la prueba de fixtures como evidencia de restauración real.
+Antes de cualquier cambio sobre datos locales previos se exige identificar el
+volumen/base/media, respaldo privado y restauración aislada.
+
+La publicación conservada es Firebase Hosting version c2844b9a87a7554d, release
+1793074077668000; SHA de implementación conocido ab045fa. El módulo nuevo no está
+publicado. Matriz de permisos, límites y runbook: [workforce.md](workforce.md).
+
+Evidencia final de código 9668fcc: quality 40541898308 y production 40541898522
+correctos; E2E Chromium remoto 3 correctas. Build de Hosting y PR lint correctos.
+El stack sintético arrancó, migró y verificó TLS/cabeceras/media privada sin usar
+una base operativa. Los respaldos y la restauración real permanecen sin verificar;
+no se requerían para modificar exclusivamente fixtures aisladas.
