@@ -9,9 +9,7 @@ ejecuta Node, Django, Server Actions ni código de servidor de Next.js.
 `config/frontend.example` contiene exclusivamente parámetros públicos de build.
 `NEXT_PUBLIC_API_URL` debe ser el **origen HTTPS** de Django, sin `/api`, ruta,
 credenciales, query ni fragmento; por ejemplo `https://api.fincamamasgarden.com`
-cuando ese servidor exista. El valor vacío actual es deliberado: bloquea todas
-las llamadas a la API y deshabilita el envío del login. No se envían contraseñas
-a una URL temporal. Nunca poner claves o tokens en variables `NEXT_PUBLIC_*`.
+cuando ese servidor exista. El valor vacío activa la demostración local descrita en [demo-mode.md](demo-mode.md). El login acepta credenciales públicas de ejemplo y no envía solicitudes a una API. Con un origen configurado se usa exclusivamente Django, sin fallback ante errores. Nunca poner claves o tokens en variables `NEXT_PUBLIC_*`.
 
 En GitHub: Settings → Secrets and variables → Actions → Variables → New
 repository variable → `NEXT_PUBLIC_API_URL`. Después, ejecutar el workflow

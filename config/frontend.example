@@ -1,4 +1,4 @@
 # Public build-time values, never credentials. Rebuild and redeploy after changes.
 NEXT_PUBLIC_SITE_URL=https://fincamamasgarden.com
-# Empty deliberately disables API requests until Django has a real HTTPS origin.
+# Empty enables the public local demo. Set a real HTTPS origin and rebuild for Django.
 NEXT_PUBLIC_API_URL=

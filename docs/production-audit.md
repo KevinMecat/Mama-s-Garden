@@ -352,3 +352,14 @@ correctos; E2E Chromium remoto 3 correctas. Build de Hosting y PR lint correctos
 El stack sintético arrancó, migró y verificó TLS/cabeceras/media privada sin usar
 una base operativa. Los respaldos y la restauración real permanecen sin verificar;
 no se requerían para modificar exclusivamente fixtures aisladas.
+
+
+## Anexo: demostración pública del cliente (2026-10-27)
+
+Por solicitud explícita se habilita un modo demo cuando el origen público de API está vacío. Esto sustituye el bloqueo del login descrito en los anexos anteriores. Las credenciales son públicas y el estado ficticio se limita a localStorage del navegador (`finca.demo.v1`); no constituye autenticación productiva ni autoriza acceso a Django/PostgreSQL. No se accede ni modifica una base operativa o archivos adjuntos privados.
+
+La API configurada conserva cookies de sesión y CSRF; cualquier indisponibilidad genera error, sin conmutación automática a datos ficticios. El retorno a operación real exige configurar el origen HTTPS en el build y volver a desplegar. Los ejemplos no se importan a PostgreSQL. No se certifican respaldos ni un backend operativo. Detalles y verificaciones reproducibles: [demo-mode.md](demo-mode.md).
+
+Verificación ejecutada el 2026-10-27: tests del cliente, ESLint y build estático con TypeScript correctos; tres pruebas E2E contra Django temporal correctas. La auditoría del build inspeccionó 328 mapas y dos trazas sin dependencias de desarrollo en el artefacto; los mapas fueron eliminados antes de publicar. Gitleaks staged sin hallazgos. Firebase CLI confirmó la publicación de 224 archivos en `surco-finca`.
+
+Validación en vivo en `https://fincamamasgarden.com`: login, 27 rutas protegidas, creación y persistencia local de proyecto, reinicio aislado, móvil y logout correctos; cero llamadas API y cero errores de ejecución/CSP. HTTPS, HSTS, DENY, nosniff, Referrer-Policy y CSP con hashes verificados. Esta publicación es una demostración pública; no certifica la operación de un ERP con datos reales.

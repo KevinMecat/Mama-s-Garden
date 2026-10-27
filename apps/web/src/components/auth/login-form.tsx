@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { AUTH_CHANGED_EVENT } from "@/components/auth/auth-controls";
-import { isApiConfigured } from "@/lib/api-client";
+import { isDemoMode } from "@/lib/api-client";
+import { resetDemo } from "@/lib/demo-api";
 import { AuthApiError, login } from "@/lib/auth-api";
 
 export function LoginForm() {
@@ -40,7 +41,7 @@ export function LoginForm() {
 
   return (
     <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-      {!isApiConfigured() && <p role="status" className="rounded-xl bg-brand-sage/30 p-4 text-sm">El acceso privado estará disponible cuando se conecte el servicio de datos.</p>}
+      {isDemoMode() && <p role="status" className="rounded-xl bg-brand-sage/30 p-4 text-sm">Modo Demostración / Offline. Accede con demo@mamasgarden.com y contraseña demo1234. Usa únicamente datos ficticios; los cambios se guardan en este navegador.</p>}
       <div>
         <label htmlFor="email" className="text-sm font-semibold text-brand-primary">
           Correo electrónico
@@ -91,10 +92,11 @@ export function LoginForm() {
           {error}
         </p>
       ) : null}
+      {isDemoMode() && error && <button type="button" onClick={resetDemo} className="text-sm font-semibold underline">Restablecer datos demo locales</button>}
 
       <button
         type="submit"
-        disabled={isSubmitting || !isApiConfigured()}
+        disabled={isSubmitting}
         className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand-primary px-5 text-base font-semibold text-white shadow-[0_12px_32px_rgba(72,73,39,0.2)] transition hover:bg-brand-secondary disabled:cursor-wait disabled:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
       >
         {isSubmitting ? "Ingresando…" : "Ingresar"}

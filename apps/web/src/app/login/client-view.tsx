@@ -1,6 +1,5 @@
 "use client";
 import { ClientPage } from "@/components/client-page";
-import { isApiConfigured } from "@/lib/api-client";
 import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
@@ -9,7 +8,7 @@ import { getCurrentUser } from "@/lib/page-api";
 import { redirect } from "@/lib/client-navigation";
 
 async function loadPage() {
-  const user = isApiConfigured() ? await getCurrentUser().catch(() => null) : null;
+  const user = await getCurrentUser().catch(() => null);
   if (user) redirect("/dashboard");
 
   return (
