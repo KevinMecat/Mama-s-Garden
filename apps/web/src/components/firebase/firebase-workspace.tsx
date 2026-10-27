@@ -15,6 +15,7 @@ import {
   CalendarCheck,
   Search,
   ShieldCheck,
+  Camera,
 } from "lucide-react";
 import { FirebaseAttendanceBoard } from "./firebase-attendance-board";
 import { readAttendanceRevisions, mergeAttendance } from "@/lib/firebase-attendance";
@@ -128,7 +129,8 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
   const [page, setPage] = useState(1);
   const [movementOpen, setMovementOpen] = useState(false),
     [movementBusy, setMovementBusy] = useState(false),
-    [movementMessage, setMovementMessage] = useState("");
+    [movementMessage, setMovementMessage] = useState(""),
+    [receiptName, setReceiptName] = useState("");
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -376,7 +378,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
                 date: String(form.get("date")), type: String(form.get("type")) as "income" | "expense" | "investment", amountCents: amount,
                 currency: String(form.get("currency")) as "USD" | "NIO", category: String(form.get("category")), description: String(form.get("description")),
                 microbusiness_id: String(form.get("microbusiness_id") || "") || null, receipt: (form.get("receipt") as File)?.size ? form.get("receipt") as File : null,
-              }).then(() => { setMovementMessage("Movimiento guardado correctamente."); setRevision((value) => value + 1); event.currentTarget.reset(); }).catch((error) => setMovementMessage(error instanceof Error ? error.message : "No se pudo guardar el movimiento.")).finally(() => setMovementBusy(false));
+              }).then(() => { setMovementMessage("Movimiento guardado correctamente."); setRevision((value) => value + 1); event.currentTarget.reset(); setReceiptName(""); }).catch((error) => setMovementMessage(error instanceof Error ? error.message : "No se pudo guardar el movimiento.")).finally(() => setMovementBusy(false));
             }}>
               <label className="text-xs text-neutral-600">Fecha<input required name="date" type="date" defaultValue={today()} className={`${input} mt-1 w-full`} /></label>
               <label className="text-xs text-neutral-600">Tipo<select name="type" className={`${input} mt-1 w-full`}><option value="income">Ingreso</option><option value="expense">Gasto</option><option value="investment">Inversión</option></select></label>
@@ -385,7 +387,17 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
               <label className="text-xs text-neutral-600">Categoría<input required minLength={2} maxLength={80} name="category" className={`${input} mt-1 w-full`} placeholder="Ej. Venta de producto" /></label>
               <label className="text-xs text-neutral-600">Unidad<select name="microbusiness_id" className={`${input} mt-1 w-full`}><option value="">General · sin unidad</option>{units.map((item) => <option key={item.id} value={item.id}>{text(item.name)}</option>)}</select></label>
               <label className="text-xs text-neutral-600 sm:col-span-2">Descripción<textarea name="description" maxLength={240} className={`${input} mt-1 min-h-20 w-full py-2`} /></label>
-              <label className="text-xs text-neutral-600 sm:col-span-2">Foto del comprobante<input name="receipt" type="file" accept="image/jpeg,image/png,image/webp" className="mt-1 block w-full text-sm" /></label>
+              <div className="sm:col-span-2">
+                <span className="text-xs text-neutral-600">Foto del comprobante</span>
+                <label htmlFor="firebase-receipt" className="mt-1 flex min-h-20 cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/60 px-4 py-3 text-emerald-900 transition hover:border-emerald-500 hover:bg-emerald-50 focus-within:ring-2 focus-within:ring-emerald-500">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-white" aria-hidden="true"><Camera size={21} /></span>
+                  <span className="min-w-0">
+                    <strong className="block text-sm">Toca para adjuntar una foto</strong>
+                    <span className="block truncate text-xs text-emerald-800">{receiptName || "Factura o comprobante · JPG, PNG o WebP"}</span>
+                  </span>
+                  <input id="firebase-receipt" name="receipt" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => setReceiptName(event.target.files?.[0]?.name || "")} />
+                </label>
+              </div>
               <button type="submit" disabled={movementBusy} className="f-button f-primary sm:col-span-2">{movementBusy ? "Guardando…" : "Guardar movimiento"}</button>
               {movementMessage && <p role="status" className="sm:col-span-2 text-sm text-emerald-700">{movementMessage}</p>}
             </form>}
