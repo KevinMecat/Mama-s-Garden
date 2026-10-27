@@ -129,6 +129,13 @@ conservar todas las colecciones nuevas y evidencia. No restaurar un respaldo sob
 producción ni revertir reglas a una versión que abra finanzas a otros roles.
 Si hay operaciones nuevas, corregir hacia adelante y preservar la trazabilidad.
 
+Para el build Docker alternativo se pasan `SOURCE_REVISION` (SHA Git de 40
+caracteres) y `SOURCE_TREE_CLEAN=1` después de verificar `git status --porcelain`
+vacío. CI comprueba esa condición y que el SHA coincide con su checkout antes
+de construir. La imagen recibe únicamente esos metadatos; no necesita Git ni
+el directorio `.git`. Su marcador declara `source=build-context`. Hosting local
+declara `source=git` y comprueba nuevamente el árbol antes de preparar el export.
+
 La validación positiva del propietario en producción requiere su contraseña
 existente, que no se solicita, cambia ni sustituye. Las pruebas positivas se
 ejecutan aisladas; en vivo se verifican publicación, cabeceras, proveedor Auth y

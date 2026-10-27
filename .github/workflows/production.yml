@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 25
     env:
       PROD_ENV_FILE: .env.ci
+      SOURCE_REVISION: ${{ github.sha }}
+      SOURCE_TREE_CLEAN: '1'
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -35,7 +37,10 @@ jobs:
           python scripts/verify_prod_env.py --env-file .env.ci
           docker compose --env-file .env.ci -f docker-compose.prod.yml config --quiet
       - name: Build isolated production images
-        run: docker compose --env-file .env.ci -f docker-compose.prod.yml build
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_REVISION"
+          test -z "$(git status --porcelain)"
+          docker compose --env-file .env.ci -f docker-compose.prod.yml build
       - name: Verify final image inventory and non-root identities
         run: |
           docker run --rm --entrypoint sh mamas-garden-web:local -c 'test -z "$(find /usr/share/nginx/html -name "*.map" -o -name node_modules -o -name package-lock.json)"'

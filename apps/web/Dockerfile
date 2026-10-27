@@ -13,7 +13,10 @@ CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 FROM development AS builder
 ARG SITE_URL=https://fincamamasgarden.com
 ARG API_URL=
-ENV NEXT_PUBLIC_SITE_URL=$SITE_URL NEXT_PUBLIC_API_URL=$API_URL BUILD_AUDIT_MAPS=1
+ARG SOURCE_REVISION
+ARG SOURCE_TREE_CLEAN=0
+ENV NEXT_PUBLIC_SITE_URL=$SITE_URL NEXT_PUBLIC_API_URL=$API_URL BUILD_AUDIT_MAPS=1 \
+    BUILD_SOURCE_SHA=$SOURCE_REVISION BUILD_SOURCE_CLEAN=$SOURCE_TREE_CLEAN
 RUN npm run build && node scripts/audit-production.mjs build && node scripts/prepare-hosting.mjs
 
 # Static runtime: no Node, npm, build tools or dependency tree is shipped.

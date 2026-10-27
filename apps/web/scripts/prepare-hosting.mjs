@@ -7,7 +7,10 @@ import { execFileSync } from "node:child_process";
 const root = path.resolve("../..");
 const out = path.resolve("out");
 const provenance = JSON.parse(fs.readFileSync(path.join(out, "build-info.json"), "utf8"));
-if (provenance.dirty || provenance.dataSource === "demo" || execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() || provenance.sha !== execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim()) throw new Error("Only an unchanged clean production build can be published.");
+const sourceMatches = provenance.source === "build-context"
+  ? process.env.BUILD_SOURCE_CLEAN === "1" && provenance.sha === process.env.BUILD_SOURCE_SHA
+  : !execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() && provenance.sha === execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+if (provenance.dirty || provenance.dataSource === "demo" || !sourceMatches) throw new Error("Only an unchanged clean production build can be published.");
 const hashes = new Set();
 let pages = 0;
 function visit(dir) {
