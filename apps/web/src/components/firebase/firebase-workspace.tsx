@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import { PrivatePhoto } from "./private-photo";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -47,54 +47,6 @@ const today = () =>
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-function PrivatePhoto({
-  source,
-  name,
-  large = false,
-}: {
-  source: unknown;
-  name: string;
-  large?: boolean;
-}) {
-  const [url, setUrl] = useState<string>();
-  const [error, setError] = useState(false);
-  useEffect(() => {
-    let active = true;
-    if (source)
-      void readStorageUrl(source)
-        .then((value) => {
-          if (active) setUrl(value);
-        })
-        .catch(() => {
-          if (active) setError(true);
-        });
-    return () => {
-      active = false;
-    };
-  }, [source]);
-  return (
-    <span
-      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-xl bg-emerald-50 text-emerald-700 ${large ? "size-20" : "size-10"}`}
-    >
-      {url && !error ? (
-        <Image
-          src={url}
-          alt={name}
-          fill
-          sizes={large ? "80px" : "40px"}
-          unoptimized
-          className="object-cover"
-          onError={() => setError(true)}
-        />
-      ) : (
-        <Users
-          size={large ? 26 : 18}
-          aria-label={error ? "Foto no disponible" : "Sin foto"}
-        />
-      )}
-    </span>
-  );
-}
 function Receipt({ source }: { source: unknown }) {
   const [url, setUrl] = useState<string>(),
     [error, setError] = useState(false),

@@ -10,6 +10,7 @@ import {
   LogOut,
   Search,
 } from "lucide-react";
+import { PrivatePhoto } from "./private-photo";
 import { Modal, fincaDate } from "./firebase-workforce-board";
 import { fullName, text } from "@/lib/firebase-models";
 import type { CloudRow } from "@/lib/firebase-client";
@@ -51,6 +52,7 @@ export function FirebaseAttendanceBoard({
   const [date, setDate] = useState(fincaDate()),
     [search, setSearch] = useState(""),
     [view, setView] = useState("day"),
+    [mode, setMode] = useState<"automatic" | "manual">("automatic"),
     [editor, setEditor] = useState<{
       plan: AttendancePlan;
       revision: number;
@@ -233,6 +235,14 @@ export function FirebaseAttendanceBoard({
           Exportar CSV
         </button>
       </div>
+      {canEdit && <fieldset className="surface-card p-4">
+        <legend className="px-2 text-sm font-semibold">Modo de registro</legend>
+        <div className="flex flex-wrap gap-2">
+          <button className={`f-button ${mode === "automatic" ? "f-primary" : ""}`} aria-pressed={mode === "automatic"} onClick={() => setMode("automatic")}>Automático</button>
+          <button className={`f-button ${mode === "manual" ? "f-primary" : ""}`} aria-pressed={mode === "manual"} onClick={() => setMode("manual")}>Manual</button>
+        </div>
+        <p className="mt-3 text-xs text-neutral-500">{mode === "automatic" ? "Toca entrada al llegar y salida al terminar: se registra la hora actual de Nicaragua. Para otras fechas o corregir horas, usa Manual." : "Escribe la hora de entrada y de salida de cada trabajador y pulsa Guardar horas. Puedes registrar primero la entrada y completar la salida después."}</p>
+      </fieldset>}
       <p className="text-xs text-neutral-500">
         Hora local de Nicaragua · Semana del {weekFor(date)}. Las horas son
         informativas: no crean pagos ni modifican planillas.
@@ -300,7 +310,7 @@ export function FirebaseAttendanceBoard({
           </article>
         ))}
         <article className="kpi-card !p-4">
-          <p className="text-xs text-neutral-500">Sin marcar hoy</p>
+          <p className="text-xs text-neutral-500">Sin marcar en esta fecha</p>
           <p className="mt-2 text-2xl font-semibold">
             {workers.filter((w) => w.status === "active" && !find(w.id)).length}
           </p>
@@ -316,8 +326,9 @@ export function FirebaseAttendanceBoard({
                 disabled = busy || isClosed(date) || w.status !== "active";
               return (
                 <article className="surface-card p-5" key={w.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-wrap items-start gap-3">
+                    <PrivatePhoto source={w.photoUrl} name={fullName(w)} large />
+                    <div className="min-w-0 flex-1">
                       <h2 className="font-semibold">{fullName(w)}</h2>
                       <p className="mt-1 text-xs text-neutral-500">
                         {text(w.area)}
@@ -363,28 +374,17 @@ export function FirebaseAttendanceBoard({
                           Presente
                         </button>
                       )}
-                      {date === fincaDate() && !plan.arrival && (
-                        <button
-                          disabled={disabled}
-                          className="f-button"
-                          onClick={() => quick(w, "arrival")}
-                        >
-                          <LogIn size={14} />
-                          Entrada ahora
-                        </button>
-                      )}
-                      {date === fincaDate() &&
-                        plan.arrival &&
-                        !plan.departure && (
-                          <button
-                            disabled={disabled}
-                            className="f-button"
-                            onClick={() => quick(w, "departure")}
-                          >
-                            <LogOut size={14} />
-                            Salida ahora
+                      {mode === "automatic" && (
+                        <>
+                          <button disabled={disabled || date !== fincaDate() || !!plan.arrival} className="f-button" onClick={() => quick(w, "arrival")}>
+                            <LogIn size={14} />{plan.arrival ? "Entrada registrada" : "Registrar entrada ahora"}
                           </button>
-                        )}
+                          <button disabled={disabled || date !== fincaDate() || !plan.arrival || !!plan.departure} className="f-button" onClick={() => quick(w, "departure")}>
+                            <LogOut size={14} />{plan.departure ? "Salida registrada" : "Registrar salida ahora"}
+                          </button>
+                        </>
+                      )}
+                      {mode === "manual" && <ManualHours key={`${w.id}-${date}-${row?.revision ?? 0}`} plan={plan} disabled={disabled} onSave={(value) => save(value, row?.operationalRevision ? Number(row.revision) : 0, "Registro manual de horas")} />}
                       <button
                         disabled={disabled}
                         className="f-button"
@@ -398,7 +398,7 @@ export function FirebaseAttendanceBoard({
                           });
                         }}
                       >
-                        Registrar / editar
+                        Detalles y correcciones
                       </button>
                     </div>
                   )}
@@ -678,4 +678,22 @@ export function FirebaseAttendanceBoard({
       )}
     </div>
   );
+}
+
+function ManualHours({ plan, disabled, onSave }: { plan: AttendancePlan; disabled: boolean; onSave(value: AttendancePlan): Promise<void> }) {
+  const [arrival, setArrival] = useState(plan.arrival);
+  const [departure, setDeparture] = useState(plan.departure);
+  const [nextDay, setNextDay] = useState(plan.nextDay);
+  return <form className="w-full space-y-3 rounded-xl border border-neutral-200 p-3" onSubmit={(event) => {
+    event.preventDefault();
+    void onSave({ ...plan, arrival, departure, nextDay, status: arrival && plan.status === "absent" ? "present" : plan.status });
+  }}>
+    <div className="grid grid-cols-2 gap-3">
+      <label className="text-xs">Hora de entrada<input aria-label="Entrada manual" className="f-input mt-1 w-full" type="time" value={arrival} disabled={disabled} onChange={(e) => { setArrival(e.target.value); if (!e.target.value) setNextDay(false); }} /></label>
+      <label className="text-xs">Hora de salida<input aria-label="Salida manual" className="f-input mt-1 w-full" type="time" value={departure} disabled={disabled} onChange={(e) => { setDeparture(e.target.value); if (!e.target.value) setNextDay(false); }} /></label>
+    </div>
+    <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={nextDay} disabled={disabled || !arrival || !departure} onChange={(e) => setNextDay(e.target.checked)} />Salida al día siguiente</label>
+    <p className="text-xs text-neutral-500">Descanso: {plan.breakMinutes} min · Ajusta descansos y observaciones en Detalles y correcciones.</p>
+    <button className="f-button f-primary" disabled={disabled || (!arrival && !departure)} type="submit"><Save size={14} />Guardar horas</button>
+  </form>;
 }

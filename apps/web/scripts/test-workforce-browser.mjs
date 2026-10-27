@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { ref, uploadBytes } from "firebase/storage";
 import { chromium } from "@playwright/test";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import { doc, setDoc, getDocs, collection } from "firebase/firestore";
@@ -8,6 +9,7 @@ import { doc, setDoc, getDocs, collection } from "firebase/firestore";
 const projectId = "demo-workforce-browser";
 const env = await initializeTestEnvironment({
   projectId,
+  storage: { host: "127.0.0.1", port: 9398, rules: fs.readFileSync("../../firebase/storage.rules", "utf8") },
   firestore: {
     host: "127.0.0.1",
     port: 8381,
@@ -43,6 +45,7 @@ for (const role of ["admin", "manager", "worker"]) {
 await env.clearFirestore();
 await env.withSecurityRulesDisabled(async (c) => {
   const db = c.firestore();
+  await uploadBytes(ref(c.storage("gs://demo-workforce-browser.appspot.com"), "trabajadores/w1/avatar.png"), Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6NE0AAAAASUVORK5CYII=", "base64"), { contentType: "image/png" });
   for (const [role, uid] of Object.entries(accounts))
     await setDoc(doc(db, "users", uid), {
       role,
@@ -53,6 +56,7 @@ await env.withSecurityRulesDisabled(async (c) => {
     await setDoc(doc(db, "workers", `w${n}`), {
       firstName: `Persona ${n}`,
       lastName: "Sintética",
+      photoUrl: n === 1 ? "trabajadores/w1/avatar.png" : "",
       age: 25,
       area: "Mantenimiento",
       status: "active",
@@ -200,8 +204,25 @@ try {
         exact: true,
       }),
     });
+  const photo = personCard.getByRole("img", {name: "Persona 1 Sintética", exact:true});
+  await photo.waitFor();
+  await page.waitForFunction(() => { const img = document.querySelector('img[alt="Persona 1 Sintética"]'); return img?.naturalWidth > 0; });
+  const secondCard = page.locator("article").filter({has:page.getByRole("heading",{name:"Persona 2 Sintética",exact:true})});
+  const day = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Managua",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  await page.clock.setFixedTime(new Date(`${day}T07:15:00-06:00`));
+  await secondCard.getByRole("button",{name:"Registrar entrada ahora",exact:true}).click();
+  await secondCard.getByText("07:15",{exact:true}).waitFor();
+  assert.ok(await secondCard.getByRole("button",{name:"Entrada registrada",exact:true}).isDisabled());
+  await page.clock.setFixedTime(new Date(`${day}T16:45:00-06:00`));
+  await secondCard.getByRole("button",{name:"Registrar salida ahora",exact:true}).click();
+  await secondCard.getByText("16:45",{exact:true}).waitFor();
+  await page.getByRole("button",{name:"Manual",exact:true}).click();
+  await secondCard.getByLabel("Entrada manual",{exact:true}).fill("08:00");
+  await secondCard.getByLabel("Salida manual",{exact:true}).fill("17:00");
+  await secondCard.getByRole("button",{name:"Guardar horas",exact:true}).click();
+  await secondCard.getByText("9 h 0 min",{exact:false}).waitFor();
   await personCard
-    .getByRole("button", { name: "Registrar / editar", exact: true })
+    .getByRole("button", { name: "Detalles y correcciones", exact: true })
     .click();
   const attendanceDialog = page.getByRole("dialog", {
     name: "Registrar asistencia",

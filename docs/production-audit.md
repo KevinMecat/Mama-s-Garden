@@ -491,3 +491,18 @@ conservación de asistencia original, móvil y descarga CSV. El respaldo privado
 anterior sigue coincidiendo con todos los documentos originales actuales y
 conserva su acta de restauración verificada. No se registraron asistencias de prueba
 con trabajadores reales en producción. Versión/SHA publicados: `/build-info.json`.
+
+## Asistencia: fotos y modos de registro — 0.3.1
+
+Las tarjetas de asistencia muestran las fotos existentes de cada trabajador usando
+lectura autenticada de Storage y un marcador alternativo cuando no hay foto. No
+se crean ni reemplazan objetos. El selector Automático registra la hora actual
+de Nicaragua al tocar entrada o salida y bloquea marcaciones ya registradas.
+Manual presenta ambos campos directamente en la tarjeta, permite guardar primero
+la entrada y completar la salida después, y soporta salida al día siguiente.
+Descansos, estado y notas se conservan; las correcciones detalladas y el historial
+siguen disponibles. Se mantienen permisos, períodos cerrados y validación horaria.
+
+Prueba de navegador en emuladores aislados: fotografía sintética de Storage,
+entrada automática a las 07:15, salida a las 16:45, edición manual 08:00–17:00,
+CSV, historial y vista móvil. No se introducen marcaciones de prueba en producción.
