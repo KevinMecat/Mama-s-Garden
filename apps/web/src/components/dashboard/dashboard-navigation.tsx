@@ -10,6 +10,7 @@ import type { AuthUser } from "@/types/auth";
 
 const activeLinks = [
   { href: "/dashboard", label: "Dashboard", exact: true },
+  { href: "/dashboard/workforce", label: "Trabajo de hoy", exact: false },
   { href: "/dashboard/projects", label: "Proyectos", exact: false },
   { href: "/dashboard/finance", label: "Finanzas", exact: false },
   { href: "/dashboard/products", label: "Productos", exact: false },

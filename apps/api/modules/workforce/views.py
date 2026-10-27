@@ -41,7 +41,9 @@ class TaskViewSet(viewsets.GenericViewSet):
         return (
             visible_tasks(self.request.user)
             .select_related("project")
-            .prefetch_related("assignees", "work_logs__times", "work_logs__review", "events")
+            .prefetch_related(
+                "assignees", "work_logs__times", "work_logs__review__reviewed_by", "events__actor"
+            )
             .order_by("scheduled_date", "id")
         )
 

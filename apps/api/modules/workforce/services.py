@@ -312,6 +312,8 @@ def task_data(task, user):
                     ),
                     "observations": review.observations,
                     "reviewed_by": str(review.reviewed_by_id),
+                    "reviewed_by_name": review.reviewed_by.get_full_name()
+                    or review.reviewed_by.email,
                     "created_at": review.created_at,
                 }
                 if review
@@ -346,6 +348,8 @@ def task_data(task, user):
     return {
         **{name: getattr(task, name) for name in fields},
         "target_quantity": str(task.target_quantity) if task.target_quantity is not None else None,
+        "created_by": str(task.created_by_id),
+        "updated_at": task.updated_at,
         "project": task.project_id,
         "project_name": task.project.name,
         "assignees": [{"id": person.pk, "name": person.full_name} for person in people],
@@ -359,6 +363,7 @@ def task_data(task, user):
             {
                 "action": item.action,
                 "actor": str(item.actor_id),
+                "actor_name": item.actor.get_full_name() or item.actor.email,
                 "detail": item.detail,
                 "created_at": item.created_at,
             }
