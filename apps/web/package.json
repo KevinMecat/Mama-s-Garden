@@ -1,16 +1,18 @@
 {
   "name": "finca-mamas-garden-web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "packageManager": "npm@11.19.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/build-info.mjs && next build",
     "start": "firebase emulators:start --only hosting --config ../../firebase.deploy.json --project surco-finca",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node scripts/test-api-client.mjs && node scripts/test-firebase-models.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:firestore": "node scripts/test-workforce-firestore.mjs",
+    "test:firebase-browser": "node scripts/test-workforce-browser.mjs"
   },
   "dependencies": {
     "firebase": "13.1.0",
@@ -21,6 +23,7 @@
     "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
     "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

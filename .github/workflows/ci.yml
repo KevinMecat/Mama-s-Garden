@@ -82,6 +82,11 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - name: Verify workforce rules and transactions on isolated Firebase emulators
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          npx --yes firebase-tools@15.34.1 emulators:exec --project demo-workforce-security --config ../../firebase/emulators.json --only firestore,storage "npm run test:firestore"
 
   workforce-browser:
     runs-on: ubuntu-24.04
@@ -108,3 +113,13 @@ jobs:
       - name: Test complete day against isolated synthetic database
         working-directory: apps/web
         run: npm run test:e2e
+      - name: Test Firebase operational flow in desktop and mobile browsers
+        working-directory: apps/web
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          NEXT_PUBLIC_DATA_SOURCE=firebase NEXT_PUBLIC_API_URL='' NEXT_PUBLIC_FIREBASE_EMULATORS=1 npm run dev -- --hostname 127.0.0.1 --port 3004 > /tmp/workforce-next.log 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true' EXIT
+          node -e 'for(let i=0;i<60;i++){try{if((await fetch("http://127.0.0.1:3004/login")).ok)process.exit(0)}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)' --input-type=module
+          npx --yes firebase-tools@15.34.1 emulators:exec --project demo-workforce-browser --config ../../firebase/emulators.json --only firestore,auth,storage "npm run test:firebase-browser"

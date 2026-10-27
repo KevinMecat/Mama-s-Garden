@@ -101,3 +101,4 @@ gha-creds-*.json
 # Isolated browser QA output
 apps/web/test-results/
 apps/web/playwright-report/
+apps/web/public/build-info.json

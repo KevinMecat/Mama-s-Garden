@@ -51,6 +51,7 @@ config.hosting.headers = [
     { key: "Content-Security-Policy", value: csp },
   ] },
   { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
+  { source: "/build-info.json", headers: [{ key: "Cache-Control", value: "no-store" }] },
   { source: "/_next/static/**", headers: [{ key: "Cache-Control", value: "public,max-age=31536000,immutable" }] },
 ];
 if (fs.existsSync(configPath)) fs.writeFileSync(path.join(root, "firebase.deploy.json"), JSON.stringify(config, null, 2) + "\n");

@@ -1,0 +1,116 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Cross-service prerequisite: the Firebase Storage service agent needs
+    // roles/firebaserules.firestoreServiceAgent on this Firebase project.
+    // Deploying rules alone does not prove this production IAM grant exists.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function activeUser() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && userProfile().get('active', false) == true
+        && userProfile().get('role', '') in ['admin', 'manager', 'worker', 'supervisor'];
+    }
+
+    function isAdmin() {
+      return activeUser() && userProfile().role == 'admin';
+    }
+
+    function canManageTransactions() {
+      return isAdmin();
+    }
+
+    function canReadMicrobusinesses() {
+      return activeUser();
+    }
+
+    function validImage() {
+      return request.resource != null
+        && request.resource.size > 0
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function validReceipt() {
+      return request.resource != null && request.resource.size > 0 && request.resource.size <= 5 * 1024 * 1024
+        && (request.resource.contentType.matches('image/(jpeg|png|webp)') || request.resource.contentType == 'application/pdf');
+    }
+
+    match /trabajadores/{workerId}/{fileName} {
+      allow get: if isAdmin() || (activeUser() && userProfile().role in ['supervisor','manager']
+        && firestore.get(/databases/(default)/documents/workers/$(workerId)).data.status == 'active')
+        || (activeUser() && userProfile().role == 'worker'
+          && firestore.get(/databases/(default)/documents/workforce_accounts/$(request.auth.uid)).data.workerId == workerId);
+      allow list: if false;
+      allow create, update: if isAdmin() && validImage() && fileName.matches('^[A-Za-z0-9-]+\\.(jpg|png|webp)$');
+      allow delete: if isAdmin();
+    }
+
+    match /facturas/{ownerUid}/{transactionId}/{fileName} {
+      allow get: if canManageTransactions();
+      allow list: if false;
+      allow create: if canManageTransactions() && (isAdmin() || (request.auth.uid == ownerUid && resource == null)) && validReceipt()
+        && fileName.matches('^[A-Za-z0-9-]+\\.(jpg|png|webp|pdf)$');
+      allow update: if isAdmin() && validReceipt()
+        && fileName.matches('^[A-Za-z0-9-]+\\.(jpg|png|webp|pdf)$');
+      allow delete: if isAdmin() || (canManageTransactions() && request.auth.uid == ownerUid);
+    }
+
+    match /cms/landing/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && validImage() && fileName.matches('^[A-Za-z0-9-]+\\.(jpg|png|webp)$');
+      allow delete: if isAdmin();
+    }
+
+    match /microbusinesses/{microbusinessId}/avatar/{fileName} {
+      allow read: if canReadMicrobusinesses();
+      allow create, update: if isAdmin() && validImage();
+      allow delete: if isAdmin();
+    }
+
+    // Public images only. Internal receipts and business records keep their RBAC.
+    match /site-public/landing/{fileName} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isAdmin() && validImage()
+        && fileName.matches('^[A-Za-z0-9-]+\\.(jpg|png|webp)$');
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /transaction-receipts/{ownerUid}/{transactionId}/{fileName} {
+      allow read: if canManageTransactions();
+      allow create: if canManageTransactions()
+        && request.auth.uid == ownerUid
+        && validImage();
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (canManageTransactions() && request.auth.uid == ownerUid);
+    }
+
+    function canReadWorkforce(taskId) {
+      return activeUser() && (userProfile().role in ['admin','manager','supervisor']
+        || (userProfile().role == 'worker' && firestore.get(/databases/(default)/documents/workforce_accounts/$(request.auth.uid)).data.workerId
+          in firestore.get(/databases/(default)/documents/workforce_tasks/$(taskId)).data.assignees));
+    }
+    match /workforce-evidence/{taskId}/{uid}/{fileName} {
+      allow get: if canReadWorkforce(taskId);
+      allow list, update, delete: if false;
+      allow create: if resource == null && request.auth.uid == uid && canReadWorkforce(taskId) && validReceipt()
+        && firestore.get(/databases/(default)/documents/workforce_tasks/$(taskId)).data.status == 'in_progress'
+        && !firestore.get(/databases/(default)/documents/workforce_tasks/$(taskId)).data.isCancelled;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
