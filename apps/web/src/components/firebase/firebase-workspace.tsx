@@ -16,6 +16,8 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
+import { FirebaseAttendanceBoard } from "./firebase-attendance-board";
+import { readAttendanceRevisions, mergeAttendance } from "@/lib/firebase-attendance";
 import type { AuthUser } from "@/types/auth";
 import { FirebaseWorkforceBoard, WorkerActions, WorkforceAccounts } from "./firebase-workforce-board";
 import { workerAdjustments, applyAdjustments } from "@/lib/firebase-workforce";
@@ -35,7 +37,6 @@ import {
   currentSalary,
   salaryHistory,
   salaryUnits,
-  attendanceLabels,
 } from "@/lib/firebase-models";
 
 type Data = Partial<Record<CollectionName, CloudRow[]>>;
@@ -169,8 +170,6 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
     [loaded, setLoaded] = useState("");
   const [search, setSearch] = useState(""),
     [month, setMonth] = useState(""),
-    [date, setDate] = useState(""),
-    [person, setPerson] = useState(""),
     [transactionType, setTransactionType] = useState(""),
     [unit, setUnit] = useState("");
   const [page, setPage] = useState(1);
@@ -181,12 +180,13 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
       if (!current || current.id !== user.id)
         throw new Error("Sesión no disponible.");
       const names = allowedCollections(current.role);
-      const [values, patches] = await Promise.all([Promise.all(
+      const [values, patches, attendanceUpdates] = await Promise.all([Promise.all(
         names.map(
           async (name) => [name, await readCollection(name, current)] as const,
         ),
-      ), workerAdjustments(current)]);
+      ), workerAdjustments(current), readAttendanceRevisions(current)]);
       const result = Object.fromEntries(values);
+      if (result.attendance) result.attendance = mergeAttendance(result.attendance, attendanceUpdates);
       if (result.workers) result.workers = applyAdjustments(result.workers, patches);
       if (active) {
         setData(result);
@@ -216,15 +216,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
     units = data?.microbusinesses ?? [],
     attendance = data?.attendance ?? [],
     transactions = data?.transactions ?? [];
-  const findWorker = (id: unknown) =>
-    workers.find((worker) => worker.id === id);
   const findUnit = (id: unknown) => units.find((item) => item.id === id);
-  const nameFor = (id: unknown) => {
-    const worker = findWorker(id);
-    return worker
-      ? fullName(worker)
-      : "Trabajador (sin permiso de perfil o no disponible)";
-  };
   const normalized = (value: string) =>
     value
       .normalize("NFD")
@@ -558,138 +550,6 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
       </>
     );
   }
-  function renderAttendance() {
-    if (!data?.attendance)
-      return (
-        <Empty>Tu perfil no tiene permiso para consultar asistencia.</Empty>
-      );
-    const filtered = attendance
-      .filter(
-        (row) =>
-          (!date || row.date === date) && (!person || row.workerId === person),
-      )
-      .sort(
-        (a, b) =>
-          text(b.date).localeCompare(text(a.date)) ||
-          nameFor(a.workerId).localeCompare(nameFor(b.workerId)),
-      );
-    return (
-      <>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <input
-            aria-label="Fecha de asistencia"
-            type="date"
-            value={date}
-            onChange={(event) => {
-              setDate(event.target.value);
-              setPage(1);
-            }}
-            className={input}
-          />
-          <select
-            aria-label="Trabajador de asistencia"
-            value={person}
-            onChange={(event) => {
-              setPerson(event.target.value);
-              setPage(1);
-            }}
-            className={input}
-          >
-            <option value="">Todas las personas</option>
-            {workers.map((worker) => (
-              <option key={worker.id} value={worker.id}>
-                {fullName(worker)}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="min-h-10 px-3 text-xs font-semibold text-emerald-700"
-            onClick={() => {
-              setDate(today());
-              setPage(1);
-            }}
-          >
-            Ver hoy
-          </button>
-          <button
-            type="button"
-            className="min-h-10 px-3 text-xs text-neutral-500"
-            onClick={() => {
-              setDate("");
-              setPerson("");
-              setPage(1);
-            }}
-          >
-            Todo el historial
-          </button>
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          {Object.entries(attendanceLabels).map(([status, label]) => (
-            <article key={status} className="surface-card p-4">
-              <p className="text-xs text-neutral-500">{label}</p>
-              <p className="mt-2 text-2xl font-semibold tabular-nums">
-                {filtered.filter((row) => row.status === status).length}
-              </p>
-            </article>
-          ))}
-        </div>
-        <div className="surface-card mt-5 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs text-neutral-500">
-              <tr>
-                {[
-                  "Fecha",
-                  "Trabajador",
-                  "Estado",
-                  "Llegada",
-                  "Justificada",
-                  "Nota",
-                ].map((title) => (
-                  <th
-                    key={title}
-                    className="whitespace-nowrap px-4 py-3 font-medium"
-                  >
-                    {title}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {filtered
-                .slice((page - 1) * rowsPerPage, page * rowsPerPage)
-                .map((row) => (
-                  <tr key={row.id}>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-neutral-500">
-                      {text(row.date)}
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      {nameFor(row.workerId)}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {attendanceLabels[text(row.status)] || "Sin estado"}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {text(row.arrival) || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {row.justified === true ? "Sí" : "No"}
-                    </td>
-                    <td className="max-w-sm px-4 py-3 text-xs text-neutral-500">
-                      {text(row.note) || "—"}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-        {!filtered.length && (
-          <Empty>No hay asistencia registrada para estos filtros.</Empty>
-        )}
-        {pager(filtered.length)}
-      </>
-    );
-  }
   function renderUnits() {
     if (!data?.microbusinesses)
       return (
@@ -898,7 +758,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
   else if (section === "workforce") content = <FirebaseWorkforceBoard user={user} workers={workers} units={units} attendance={attendance} create={params.get("create") === "1"} historyWorker={params.get("worker") || ""}/>;
   else if (section === "users") content = <WorkforceAccounts user={user} workers={workers}/>;
   else if (section === "attendance")
-    content = renderAttendance();
+    content = <FirebaseAttendanceBoard user={user} workers={workers} rows={attendance} payrolls={data?.payrolls ?? []} changed={async () => { const updates = await readAttendanceRevisions(user); setData(previous => ({ ...previous, attendance: mergeAttendance(previous?.attendance ?? [], updates) })); }}/>;
   else if (["finance", "sales", "finance-summary"].includes(section)) content = renderFinance();
   else if (["projects", "units"].includes(section)) content = renderUnits();
   else if (section === "payroll")

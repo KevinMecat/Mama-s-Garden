@@ -476,6 +476,53 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/workforce_worker_adjustments/$(request.resource.data.workerId)).data.revision == request.resource.data.revision;
       allow update, delete: if false;
     }
+    function isoAttendanceDay(t) {
+      return string(t.year()) + '-' + (t.month() < 10 ? '0' : '') + string(t.month()) + '-' + (t.day() < 10 ? '0' : '') + string(t.day());
+    }
+    function attendanceClock(t) { return int(t.split(':')[0]) * 60 + int(t.split(':')[1]); }
+    function validOperationalAttendance(a, id) {
+      let total = a.arrival != '' && a.departure != '' ? attendanceClock(a.departure) - attendanceClock(a.arrival) + (a.nextDay ? 1440 : 0) - a.breakMinutes : 0;
+      return a.keys().hasOnly(['workerId','date','weekStart','status','arrival','departure','nextDay','breakMinutes','justified','note','day','week','revision','lastOperationId','updatedBy','updatedAt'])
+        && a.workerId is string && id == a.workerId + '_' + a.date
+        && a.day is timestamp && a.week is timestamp && a.day == a.day.date() && a.week == a.week.date()
+        && a.day >= timestamp.date(2020,1,1) && a.day <= (request.time - duration.value(6,'h')).date()
+        && a.week.toMillis() % 604800000 == 345600000 && a.day >= a.week && a.day < a.week + duration.value(7,'d')
+        && a.date == isoAttendanceDay(a.day) && a.weekStart == isoAttendanceDay(a.week)
+        && !exists(/databases/$(database)/documents/payrolls/$(a.weekStart))
+        && activeWorker(a.workerId)
+        && (!exists(/databases/$(database)/documents/workforce_settings/people) || !(a.workerId in get(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds))
+        && a.status in ['present','late','half','absent'] && a.nextDay is bool && a.justified is bool
+        && a.arrival is string && a.arrival.matches('^$|^(?:[01]\\d|2[0-3]):[0-5]\\d$')
+        && a.departure is string && a.departure.matches('^$|^(?:[01]\\d|2[0-3]):[0-5]\\d$')
+        && (a.departure == '' || a.arrival != '')
+        && a.breakMinutes is int && a.breakMinutes >= 0 && a.breakMinutes <= 240
+        && (a.status != 'absent' || (a.arrival == '' && a.departure == '' && !a.nextDay && a.breakMinutes == 0))
+        && ((a.arrival != '' && a.departure != '' && total > 0 && total <= 1440) || ((a.arrival == '' || a.departure == '') && a.breakMinutes == 0 && !a.nextDay))
+        && a.note is string && a.note.size() <= 500 && a.revision is int && a.updatedBy == request.auth.uid && a.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/workforce_attendance_history/$(a.lastOperationId)).data.record == a;
+    }
+    match /workforce_attendance/{id} {
+      allow get: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow list: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow create, update: if planner() && validOperationalAttendance(request.resource.data,id)
+        && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1)
+        && (resource == null || (request.resource.data.workerId == resource.data.workerId && request.resource.data.date == resource.data.date));
+      allow delete: if false;
+    }
+    match /workforce_attendance_history/{id} {
+      allow get: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow list: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow create: if planner() && request.resource.data.keys().hasOnly(['workerId','date','recordId','revision','actor','actorLabel','reason','fingerprint','record','createdAt'])
+        && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
+        && request.resource.data.actorLabel is string && request.resource.data.actorLabel.size() <= 140
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
+        && request.resource.data.fingerprint is string && request.resource.data.fingerprint.size() == 64
+        && request.resource.data.recordId == request.resource.data.workerId + '_' + request.resource.data.date
+        && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data.lastOperationId == id
+        && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data.revision == request.resource.data.revision
+        && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data == request.resource.data.record;
+      allow update, delete: if false;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

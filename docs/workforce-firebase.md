@@ -1,4 +1,27 @@
-# Operación del personal en Firebase — 0.2.0
+# Operación del personal en Firebase — 0.3.0
+
+## Asistencia diaria
+
+`/dashboard/attendance` permite marcar Presente, Tarde, Medio día o Ausente;
+registrar entrada/salida manualmente o mediante los botones de hora actual en
+Nicaragua; indicar minutos de descanso, turno con salida al día siguiente,
+justificación y observaciones. El tiempo neto solo se muestra con ambas horas.
+Se puede consultar la semana, el historial completo, buscar por trabajador y
+exportar los registros filtrados a CSV. El archivo protege contra fórmulas CSV.
+
+Administrador y Encargado pueden registrar/corregir; Trabajador consulta su ficha.
+Las escrituras se realizan en `workforce_attendance/{workerId}_{date}` y en un
+evento inmutable `workforce_attendance_history`. Los registros originales de
+`attendance` se conservan; las pantallas y avisos del Kanban usan la lectura
+consolidada, con prioridad de la revisión para la misma persona/fecha.
+
+El servidor valida la semana lunes-domingo derivada de la fecha, horas válidas,
+descanso y turno, personal activo, revisión incremental e historial ligado.
+No permite fechas futuras en Nicaragua, borrado, modificaciones de historial ni
+correcciones cuando existe una planilla para la semana. Los reintentos no duplican
+la marcación. Los minutos son informativos: no cambian tarifas, pagos o planillas.
+Las pruebas de reglas y navegador incluyen entrada/salida, descanso, turno
+nocturno, CSV, móvil, historial, permisos y conservación de la asistencia original.
 
 La instrucción vigente del propietario establece `surco-finca` como origen de
 personal, salarios USD, asistencia, unidades, finanzas y fotografías. El cliente
@@ -106,7 +129,7 @@ Para Windows puede usarse `QA_BROWSER_CHANNEL=msedge`.
 
 La rama `feature/personal-kanban` mantiene PR #2 sobre `chore/environment-setup`,
 dependiente de PR #1. No se integra ni se eluden las revisiones de main. Los commits
-son convencionales y la versión menor 0.2.0 incorpora funcionalidad compatible.
+son convencionales y la versión menor 0.3.0 incorpora funcionalidad compatible.
 
 Compilar desde un commit limpio con `NEXT_PUBLIC_DATA_SOURCE=firebase`, API vacía,
 `NEXT_PUBLIC_SITE_URL=https://fincamamasgarden.com`, `BUILD_AUDIT_MAPS=1` y sin el

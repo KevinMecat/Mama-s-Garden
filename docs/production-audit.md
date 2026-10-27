@@ -469,3 +469,25 @@ Los ajustes posteriores de metadatos Docker no cambian datos ni el dominio
 operativo. El SHA servido de la última compilación se consulta siempre en
 `/build-info.json`; no se interpreta el HEAD de un commit documental como prueba
 de la versión desplegada. CI valida también el build Docker sin copiar `.git`.
+
+## Asistencia operativa — 0.3.0
+
+Se sustituye la consulta de asistencia por registro diario de presencia, entrada,
+salida, descanso, turno nocturno, justificación y observaciones; se añaden resumen
+semanal, CSV y revisiones auditadas. Se mantiene el origen real del personal.
+Las marcaciones nuevas y las correcciones se guardan en `workforce_attendance`
+y `workforce_attendance_history`, sin sobrescribir los 216 registros originales.
+La lectura consolidada se comparte con los avisos de asignación del Kanban.
+
+Reglas: Administrador/Encargado registran; trabajador consulta su vínculo. Fechas
+futuras en Nicaragua e inactivos se rechazan. La semana se deriva y valida en el
+servidor para impedir eludir una planilla cerrada mediante otra clave semanal.
+Se exige revisión incremental e historial inmutable ligado. No se generan pagos,
+no se cambian salarios, tarifas o planillas, ni se calculan horas desde el Kanban.
+
+Pruebas aisladas correctas: entrada/salida, descuento de descanso, turno nocturno,
+horas inválidas, permisos, idempotencia, conflictos, cierre de planilla, revisiones,
+conservación de asistencia original, móvil y descarga CSV. El respaldo privado
+anterior sigue coincidiendo con todos los documentos originales actuales y
+conserva su acta de restauración verificada. No se registraron asistencias de prueba
+con trabajadores reales en producción. Versión/SHA publicados: `/build-info.json`.

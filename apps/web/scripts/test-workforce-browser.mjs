@@ -188,6 +188,64 @@ try {
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${base}/dashboard/attendance`);
+  await page
+    .getByRole("heading", { name: "Persona 1 Sintética", exact: true })
+    .waitFor();
+  const personCard = page
+    .locator("article")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Persona 1 Sintética",
+        exact: true,
+      }),
+    });
+  await personCard
+    .getByRole("button", { name: "Registrar / editar", exact: true })
+    .click();
+  const attendanceDialog = page.getByRole("dialog", {
+    name: "Registrar asistencia",
+    exact: true,
+  });
+  await attendanceDialog
+    .getByLabel("Hora de entrada", { exact: true })
+    .fill("07:00");
+  await attendanceDialog
+    .getByLabel("Hora de salida", { exact: true })
+    .fill("16:00");
+  await attendanceDialog
+    .getByLabel("Minutos de descanso", { exact: true })
+    .fill("60");
+  await attendanceDialog
+    .getByRole("button", { name: "Guardar asistencia", exact: true })
+    .click();
+  await attendanceDialog.waitFor({ state: "hidden" });
+  await personCard.getByText("8 h 0 min", { exact: false }).waitFor();
+  const downloadWait = page.waitForEvent('download');
+  await page.getByRole('button',{name:'Exportar CSV',exact:true}).click();
+  const download = await downloadWait;
+  const csvStream = await download.createReadStream();let csv='';for await (const chunk of csvStream) csv+=chunk.toString();
+  assert.match(csv,/"480"/);assert.match(csv,/"Salida"/);
+  await personCard.getByRole("button", { name: "Ver revisiones" }).click();
+  await page
+    .getByRole("dialog", { name: "Revisiones de asistencia" })
+    .getByText("Revisión 1", { exact: false })
+    .waitFor();
+  await page
+    .getByRole("dialog", { name: "Revisiones de asistencia" })
+    .getByRole("button", { name: "Cerrar ventana" })
+    .click();
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  );
+  await page.getByRole('heading',{name:'Asistencia',exact:true}).click();
+  await page.evaluate(()=>window.scrollTo(0,0));
+  await page.screenshot({
+    path: "../../audit-reports/attendance-mobile.png",
+    fullPage: true,
+  });
   await page.goto(`${base}/dashboard/workforce?worker=w1`);
   await page
     .getByRole("heading", { name: "Historial de Persona 1 Sintética" })

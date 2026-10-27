@@ -446,6 +446,126 @@ try {
       .value,
     0,
   );
+  const attendanceExports = {};
+  new Function(
+    "exports",
+    "require",
+    ts.transpileModule(
+      fs.readFileSync("src/lib/firebase-attendance.ts", "utf8"),
+      {
+        compilerOptions: {
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2022,
+        },
+      },
+    ).outputText,
+  )(attendanceExports, (name) =>
+    name === "firebase/firestore"
+      ? store
+      : name.endsWith("firebase-workforce")
+        ? api
+        : { firebaseClient: async () => ({ db }) },
+  );
+  const att = attendanceExports;
+  const entry = {
+    workerId: "w1",
+    date: "2026-10-27",
+    status: "present",
+    arrival: "07:00",
+    departure: "",
+    nextDay: false,
+    breakMinutes: 0,
+    justified: false,
+    note: "",
+  };
+  selectUser(admin);
+  const attendanceOperation = op();
+  await att.saveAttendance(
+    admin,
+    entry,
+    0,
+    attendanceOperation,
+    "Registro de prueba",
+  );
+  await att.saveAttendance(
+    admin,
+    entry,
+    0,
+    attendanceOperation,
+    "Registro de prueba",
+  );
+  const entryRef = store.doc(db, "workforce_attendance", "w1_2026-10-27");
+  assert.equal((await store.getDoc(entryRef)).data().revision, 1);
+  assert.equal(att.workedMinutes(entry), null);
+  const closedEntry = { ...entry, departure: "16:00", breakMinutes: 60 };
+  selectUser(manager);
+  await att.saveAttendance(manager, closedEntry, 1, op(), "Salida y descanso");
+  assert.equal(att.workedMinutes(closedEntry), 480);
+  assert.equal(
+    att.workedMinutes({
+      ...closedEntry,
+      arrival: "22:00",
+      departure: "06:00",
+      nextDay: true,
+      breakMinutes: 0,
+    }),
+    480,
+  );
+  await assert.rejects(() =>
+    att.saveAttendance(admin, entry, 0, op(), "Versión obsoleta"),
+  );
+  assert.throws(() => att.validateAttendance({ ...entry, departure: "06:00" }));
+  assert.throws(() => att.validateAttendance({ ...entry, status: "absent" }));
+  await assert.rejects(() =>
+    att.saveAttendance(worker, entry, 0, op(), "Sin permiso"),
+  );
+  const workerDb = env.authenticatedContext("worker").firestore();
+  await assertFails(
+    store.updateDoc(
+      store.doc(workerDb, "workforce_attendance", "w1_2026-10-27"),
+      { status: "absent" },
+    ),
+  );
+  await assertFails(store.deleteDoc(entryRef));
+  selectUser(admin);
+  const entries = await att.readAttendanceRevisions(admin);
+  assert.equal(entries.length, 1);
+  assert.equal(
+    att.mergeAttendance(
+      [{ id: "legacy", workerId: "w1", date: entry.date, status: "absent" }],
+      entries,
+    ).length,
+    1,
+  );
+  const revisions = await att.attendanceHistory(admin, "w1", entry.date);
+  assert.equal(revisions.length, 2);
+  await assertFails(
+    store.updateDoc(
+      store.doc(db, "workforce_attendance_history", revisions[0].id),
+      { reason: "cambio" },
+    ),
+  );
+  await env.withSecurityRulesDisabled((c) =>
+    store.setDoc(store.doc(c.firestore(), "payrolls", "2026-10-26"), {
+      approved: true,
+    }),
+  );
+  await assertFails(
+    att.saveAttendance(
+      admin,
+      { ...closedEntry, note: "Corrección bloqueada" },
+      2,
+      op(),
+      "Período cerrado",
+    ),
+  );
+  assert.deepEqual(
+    (await store.getDoc(store.doc(db, "attendance", "a1"))).data(),
+    before[1],
+  );
+  console.log(
+    "PASS attendance: entry/exit, breaks, overnight shift, idempotency, immutable revisions, stale writes, roles, closed payroll and unchanged legacy records.",
+  );
   console.log(
     "PASS: full workday, returns, six-person crew, explicit time, idempotency, stale writes, inactive staff, role isolation, immutable history, productivity and unchanged legacy payroll/personnel/attendance.",
   );
