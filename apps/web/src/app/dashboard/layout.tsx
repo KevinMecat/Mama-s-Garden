@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation";
 import { getCurrentUser } from "@/lib/auth-api";
-import { isDemoMode } from "@/lib/api-client";
-import { resetDemo } from "@/lib/demo-api";
+import { isFirebaseMode } from "@/lib/api-client";
+import { FirebaseWorkspace } from "@/components/firebase/firebase-workspace";
 import type { AuthUser } from "@/types/auth";
 
 export default function DashboardLayout({
@@ -55,25 +55,22 @@ export default function DashboardLayout({
       </p>
     );
   return (
-    <div className="min-h-svh bg-[#f3f0e6] md:grid md:grid-cols-[17rem_minmax(0,1fr)]">
+    <div className="min-h-svh bg-background font-sans text-neutral-900">
       <DashboardNavigation user={user} />
-      <main className="min-w-0">
-        {isDemoMode() && (
-          <aside className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-950">
-            <span>
-              <strong>Modo Demostración / Offline</strong> · Datos ficticios
-              guardados solo en este navegador. No ingreses datos reales.
-            </span>
-            <button
-              type="button"
-              onClick={resetDemo}
-              className="rounded border border-amber-400 px-3 py-2 font-semibold"
-            >
-              Restablecer demo
-            </button>
-          </aside>
+      <main id="dashboard-content" className="min-w-0 pt-14 lg:ml-60">
+        {isFirebaseMode() ? (
+          <Suspense
+            fallback={
+              <p role="status" className="p-8">
+                Cargando datos de la finca…
+              </p>
+            }
+          >
+            <FirebaseWorkspace user={user} />
+          </Suspense>
+        ) : (
+          children
         )}
-        {children}
       </main>
     </div>
   );

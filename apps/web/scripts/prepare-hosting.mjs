@@ -30,10 +30,13 @@ if (api) {
   const url = new URL(api);
   if (url.protocol !== "https:" || url.origin !== api) throw new Error("NEXT_PUBLIC_API_URL must be an HTTPS origin");
 }
+const firebase = (process.env.NEXT_PUBLIC_DATA_SOURCE ?? (api ? "django" : "firebase")) === "firebase";
+const cloudConnections = firebase ? " https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com" : "";
+const cloudImages = firebase ? " https://firebasestorage.googleapis.com https://storage.googleapis.com" : "";
 const csp = [
   "default-src 'self'", `script-src 'self' ${[...hashes].join(" ")}`,
-  "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https://images.unsplash.com" + (api ? ` ${api}` : ""),
-  "font-src 'self'", `connect-src 'self'${api ? ` ${api}` : ""}`,
+  "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https://images.unsplash.com" + cloudImages + (api ? ` ${api}` : ""),
+  "font-src 'self'", `connect-src 'self'${cloudConnections}${api ? ` ${api}` : ""}`,
   "object-src 'none'", "base-uri 'self'", "frame-ancestors 'none'", "form-action 'self'", "upgrade-insecure-requests",
 ].join("; ");
 const configPath = path.join(root, "firebase.json");

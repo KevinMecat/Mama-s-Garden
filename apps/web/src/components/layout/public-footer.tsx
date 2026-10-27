@@ -6,7 +6,7 @@ const locationUrl =
 
 export function PublicFooter() {
   return (
-    <footer id="contacto" className="scroll-mt-24 bg-[#292b19] px-5 py-12 text-white sm:px-8 lg:py-16">
+    <footer id="contacto" className="scroll-mt-24 bg-[#123b30] px-5 py-12 text-white sm:px-8 lg:py-16">
       <div className="mx-auto grid max-w-7xl gap-10 border-b border-white/12 pb-10 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
         <div className="max-w-md">
           <Link
@@ -17,7 +17,7 @@ export function PublicFooter() {
             <span className="grid size-12 place-items-center rounded-xl bg-brand-paper">
               <Image src="/brand/logo.svg" alt="" width={42} height={42} className="size-10" />
             </span>
-            <span className="font-display text-xl font-semibold">Mama&apos;s Garden</span>
+            <span className="font-sans text-xl font-semibold">Mama&apos;s Garden</span>
           </Link>
           <p className="mt-5 text-sm leading-7 text-white/66">
             Naturaleza, calidad y futuro unidos en una finca que produce con responsabilidad y gestiona cada recurso con claridad.
@@ -25,7 +25,7 @@ export function PublicFooter() {
         </div>
 
         <nav aria-label="Enlaces de la finca">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-sage">Conócenos</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-sage">Conócenos</p>
           <ul className="mt-4 space-y-3 text-sm">
             <li><Link href="/#esencia" className="text-white/74 hover:text-white">Nuestra esencia</Link></li>
             <li><Link href="/#recorrido" className="text-white/74 hover:text-white">Áreas de trabajo</Link></li>
@@ -34,13 +34,13 @@ export function PublicFooter() {
         </nav>
 
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-sage">Equipo de la finca</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-sage">Equipo de la finca</p>
           <p className="mt-4 text-sm leading-6 text-white/66">
             El acceso operativo está reservado para personal autorizado.
           </p>
           <Link
             href="/login"
-            className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 px-5 text-sm font-bold text-white transition hover:bg-white hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full border border-white/25 px-5 text-sm font-semibold text-white transition hover:bg-white hover:text-brand-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             Acceso para trabajadores
           </Link>

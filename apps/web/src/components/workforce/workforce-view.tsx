@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GripVertical } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -40,13 +41,13 @@ const priority: Record<string, string> = {
   HIGH: "Alta",
 };
 const button =
-  "min-h-11 rounded-xl border border-brand-border bg-white px-4 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-cream disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary";
+  "min-h-11 rounded-xl border border-brand-border bg-white px-4 py-2 text-sm font-semibold text-brand-ink hover:bg-brand-cream disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary";
 const primaryButton = button
   .replace("bg-white", "bg-brand-primary")
-  .replace("text-brand-primary", "text-white")
+  .replace("text-brand-ink", "text-white")
   .replace("hover:bg-brand-cream", "hover:bg-brand-secondary");
 const input =
-  "mt-1 min-h-11 w-full rounded-xl border border-brand-border bg-white px-3 py-2 text-base text-brand-primary";
+  "mt-1 min-h-11 w-full rounded-xl border border-brand-border bg-white px-3 py-2 text-base text-brand-ink";
 function today() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Guatemala",
@@ -192,7 +193,7 @@ export function WorkforceView({ mode }: { mode: Mode }) {
           setDragged(task.id);
         }}
         onDragEnd={() => setDragged(undefined)}
-        className="min-w-0 rounded-2xl border border-brand-border bg-white p-4 shadow-sm"
+        className="min-w-0 cursor-grab rounded-xl border border-neutral-200/80 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-md active:cursor-grabbing"
       >
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
           <span
@@ -204,17 +205,16 @@ export function WorkforceView({ mode }: { mode: Mode }) {
           >
             Prioridad {priority[task.priority]}
           </span>
-          {task.crew && <span>Cuadrilla</span>}
+          {task.crew && <span className="rounded-md bg-teal-50 px-2 py-1 text-[10px] text-teal-700">Cuadrilla</span>}
+          <GripVertical size={15} className="ml-auto text-neutral-300" aria-hidden="true"/>
         </div>
-        <h3 className="mt-3 break-words font-display text-xl font-semibold">
+        <h3 className="mt-3 break-words font-sans text-sm font-semibold">
           {task.title}
         </h3>
         <p className="mt-1 break-words text-sm text-brand-muted">
           {task.project_name} · {task.location}
         </p>
-        <p className="mt-3 text-sm">
-          {task.assignees.map((person) => person.name).join(", ")}
-        </p>
+        <div className="mt-4 flex items-center gap-2 border-t border-neutral-100 pt-3"><div className="flex shrink-0 -space-x-1.5">{task.assignees.slice(0, 3).map(person => <span key={person.id} title={person.name} className="grid size-7 place-items-center rounded-full border-2 border-white bg-emerald-100 text-[10px] font-semibold text-emerald-800">{person.name.split(" ").map(part => part[0]).slice(0, 2).join("")}</span>)}</div><p className="min-w-0 text-xs text-neutral-500">{task.assignees.map(person => person.name).join(", ")}</p></div>
         <p className="mt-1 text-xs text-brand-muted">
           Fecha: {task.scheduled_date} · {task.activity}
         </p>
@@ -393,13 +393,13 @@ export function WorkforceView({ mode }: { mode: Mode }) {
   }
 
   return (
-    <section className="mx-auto max-w-[100rem] px-4 py-7 text-brand-primary sm:px-7 lg:px-9">
+    <section className="mx-auto max-w-[100rem] px-4 py-7 text-brand-ink sm:px-7 lg:px-9">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-secondary">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-secondary">
             Personal · trabajo y revisión
           </p>
-          <h1 className="mt-3 font-display text-4xl font-semibold">
+          <h1 className="mt-3 font-sans text-4xl font-semibold">
             {mode === "board"
               ? "Trabajo de hoy"
               : mode === "close"
@@ -533,7 +533,7 @@ export function WorkforceView({ mode }: { mode: Mode }) {
               </button>
             ))}
           </div>
-          <div className="grid min-w-0 gap-4 lg:grid-cols-4">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-4">
             {states.map(([id, label]) => (
               <section
                 key={id}
@@ -543,11 +543,11 @@ export function WorkforceView({ mode }: { mode: Mode }) {
                   event.preventDefault();
                   drop(id);
                 }}
-                className={`${mobileState === id ? "block" : "hidden"} min-w-0 rounded-2xl bg-brand-cream/60 p-3 lg:block`}
+                className={`${mobileState === id ? "block" : "hidden"} min-h-64 min-w-0 rounded-xl border border-neutral-200/70 bg-neutral-100/80 p-3 lg:block`}
               >
-                <h2 className="mb-4 px-1 font-display text-xl font-semibold">
+                <h2 className="mb-4 flex items-center justify-between px-1 font-sans text-xs font-semibold uppercase tracking-wide text-neutral-600">
                   {label}{" "}
-                  <span className="text-sm text-brand-muted">
+                  <span className="rounded-md bg-white px-2 py-0.5 text-xs text-neutral-500">
                     {tasks.filter((task) => task.state === id).length}
                   </span>
                 </h2>
@@ -766,12 +766,12 @@ function TaskDialog({
         close();
       }}
       aria-labelledby="workforce-dialog-title"
-      className="m-auto max-h-[92svh] w-[calc(100%-1.5rem)] max-w-2xl overflow-y-auto rounded-2xl border border-brand-border bg-brand-paper p-5 text-brand-primary shadow-xl backdrop:bg-black/45 sm:p-8"
+      className="m-auto max-h-[92svh] w-[calc(100%-1.5rem)] max-w-2xl overflow-y-auto rounded-2xl border border-brand-border bg-brand-paper p-5 text-brand-ink shadow-xl backdrop:bg-black/45 sm:p-8"
     >
       <div className="mb-5 flex items-start justify-between gap-3">
         <h2
           id="workforce-dialog-title"
-          className="font-display text-2xl font-semibold"
+          className="font-sans text-2xl font-semibold"
         >
           {titles[action]}
         </h2>
@@ -798,7 +798,7 @@ function TaskDialog({
       )}
       {action === "detail" && task ? (
         <div className="space-y-5">
-          <h3 className="break-words font-display text-xl">{task.title}</h3>
+          <h3 className="break-words font-sans text-xl">{task.title}</h3>
           <p className="whitespace-pre-wrap break-words">
             {task.instructions || "Sin instrucciones adicionales."}
           </p>

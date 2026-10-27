@@ -81,14 +81,14 @@ export default function HomePage() {
           sizes="100vw"
           className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1d2112]/95 via-[#293019]/58 to-[#293019]/12" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#102d25]/95 via-[#123b30]/58 to-[#123b30]/12" />
 
         <div className="relative mx-auto w-full max-w-7xl px-5 py-14 text-white sm:px-8 sm:py-20 lg:px-10 lg:py-24">
           <div className="max-w-4xl">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/82">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/82">
               Naturaleza · Calidad · Futuro
             </p>
-            <h1 className="mt-5 max-w-3xl font-display text-5xl leading-[0.96] font-semibold tracking-[-0.035em] text-balance sm:text-6xl lg:text-[5.25rem]">
+            <h1 className="mt-5 max-w-3xl font-sans text-5xl leading-[0.96] font-semibold tracking-[-0.035em] text-balance sm:text-6xl lg:text-[5.25rem]">
               Cultivamos hoy la finca que queremos dejar mañana.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82 sm:text-xl">
@@ -98,13 +98,13 @@ export default function HomePage() {
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#esencia"
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-7 text-base font-bold text-brand-primary transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-7 text-base font-semibold text-brand-ink transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Conoce nuestra esencia
               </a>
               <a
                 href="#contacto"
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/45 bg-black/10 px-7 text-base font-bold text-white backdrop-blur-sm transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/45 bg-black/10 px-7 text-base font-semibold text-white backdrop-blur-sm transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Contacto y ubicación
               </a>
@@ -118,7 +118,7 @@ export default function HomePage() {
               ["03", "Decisiones informadas"],
             ].map(([number, label]) => (
               <div key={number} className="flex items-center gap-3 bg-brand-primary/62 px-5 py-4 backdrop-blur-sm">
-                <span className="font-display text-xl text-brand-sage">{number}</span>
+                <span className="font-sans text-xl text-brand-sage">{number}</span>
                 <p className="text-sm font-semibold text-white/90">{label}</p>
               </div>
             ))}
@@ -137,14 +137,14 @@ export default function HomePage() {
               className="object-cover"
             />
             <div className="absolute inset-x-5 bottom-5 rounded-2xl bg-brand-paper/92 p-5 shadow-xl backdrop-blur sm:inset-x-8 sm:bottom-8 sm:p-6">
-              <p className="font-display text-2xl font-semibold text-brand-primary">Crecer sin perder el origen.</p>
+              <p className="font-sans text-2xl font-semibold text-brand-ink">Crecer sin perder el origen.</p>
               <p className="mt-2 text-sm leading-6 text-brand-muted">Ese es el compromiso que guía cada decisión.</p>
             </div>
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-secondary">Nuestra esencia</p>
-            <h2 className="mt-4 max-w-2xl font-display text-4xl leading-[1.06] font-semibold tracking-tight text-brand-primary sm:text-5xl lg:text-6xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-secondary">Nuestra esencia</p>
+            <h2 className="mt-4 max-w-2xl font-sans text-4xl leading-[1.06] font-semibold tracking-tight text-brand-ink sm:text-5xl lg:text-6xl">
               Cuidar lo que producimos empieza por cuidar cómo lo hacemos.
             </h2>
             <p className="mt-6 text-lg leading-8 text-brand-muted">
@@ -161,7 +161,7 @@ export default function HomePage() {
                 ["Claridad", "Decidimos con información."],
               ].map(([term, description]) => (
                 <div key={term}>
-                  <dt className="font-display text-xl font-semibold text-brand-primary">{term}</dt>
+                  <dt className="font-sans text-xl font-semibold text-brand-ink">{term}</dt>
                   <dd className="mt-1 text-sm leading-6 text-brand-muted">{description}</dd>
                 </div>
               ))}
@@ -170,12 +170,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="recorrido" className="scroll-mt-24 bg-[#eeeadc] px-5 py-20 sm:px-8 lg:py-28">
+      <section id="recorrido" className="scroll-mt-24 bg-[#f1f5f4] px-5 py-20 sm:px-8 lg:py-28">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-secondary">La finca en acción</p>
-              <h2 className="mt-4 font-display text-4xl leading-tight font-semibold tracking-tight text-brand-primary sm:text-5xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-secondary">La finca en acción</p>
+              <h2 className="mt-4 font-sans text-4xl leading-tight font-semibold tracking-tight text-brand-ink sm:text-5xl">
                 Una operación conectada de principio a fin.
               </h2>
             </div>
@@ -195,12 +195,12 @@ export default function HomePage() {
                     sizes="(max-width: 1024px) 100vw, 33vw"
                     className="object-cover transition duration-500 motion-safe:group-hover:scale-[1.025]"
                   />
-                  <span className="absolute top-4 left-4 grid size-10 place-items-center rounded-full bg-brand-paper text-sm font-bold text-brand-primary shadow-sm">
+                  <span className="absolute top-4 left-4 grid size-10 place-items-center rounded-full bg-brand-paper text-sm font-semibold text-brand-ink shadow-sm">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
                 <div className="p-6 sm:p-7">
-                  <h3 className="font-display text-2xl font-semibold text-brand-primary">{area.title}</h3>
+                  <h3 className="font-sans text-2xl font-semibold text-brand-ink">{area.title}</h3>
                   <p className="mt-3 leading-7 text-brand-muted">{area.description}</p>
                 </div>
               </article>
@@ -212,8 +212,8 @@ export default function HomePage() {
       <section className="bg-brand-primary px-5 py-18 text-white sm:px-8 lg:py-24">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-sage">Una finca bien administrada</p>
-            <h2 className="mt-4 font-display text-4xl leading-tight font-semibold sm:text-5xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-sage">Una finca bien administrada</p>
+            <h2 className="mt-4 font-sans text-4xl leading-tight font-semibold sm:text-5xl">
               La información también es una herramienta de campo.
             </h2>
             <p className="mt-5 text-lg leading-8 text-white/72">
@@ -222,7 +222,7 @@ export default function HomePage() {
           </div>
           <Link
             href="/login"
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-brand-sage px-7 text-base font-bold text-brand-primary transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-fit"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-brand-sage px-7 text-base font-semibold text-brand-ink transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-fit"
           >
             Ingresar al sistema
           </Link>

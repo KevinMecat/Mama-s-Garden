@@ -1,8 +1,13 @@
 import { demoFetch } from "@/lib/demo-api";
 
 const origin = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
-export const isApiConfigured = () => Boolean(origin);
-export const isDemoMode = () => !origin;
+export const dataSource =
+  process.env.NEXT_PUBLIC_DATA_SOURCE ?? (origin ? "django" : "firebase");
+if (!["firebase", "django", "demo"].includes(dataSource))
+  throw new Error("Origen de datos no válido.");
+export const isApiConfigured = () => dataSource === "django" && Boolean(origin);
+export const isDemoMode = () => dataSource === "demo";
+export const isFirebaseMode = () => dataSource === "firebase";
 export const DATA_CHANGED_EVENT = "finca:data-changed";
 
 export function apiUrl(path: string) {
@@ -28,6 +33,16 @@ export function apiUrl(path: string) {
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const url = apiUrl(path);
+  if (isFirebaseMode())
+    return new Response(
+      JSON.stringify({
+        detail:
+          "La conexión Firebase es de solo lectura y no utiliza la API de Django.",
+      }),
+      { status: 405, headers: { "Content-Type": "application/json" } },
+    );
+  if (dataSource === "django" && !origin)
+    throw new Error("Falta el origen de Django.");
   const response = isDemoMode()
     ? await demoFetch(path, options)
     : await fetch(url, {

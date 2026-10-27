@@ -42,7 +42,7 @@ export function LoginForm() {
   return (
     <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
       <div>
-        <label htmlFor="email" className="text-sm font-semibold text-brand-primary">
+        <label htmlFor="email" className="text-sm font-semibold text-brand-ink">
           Correo electrónico
         </label>
         <input
@@ -54,13 +54,13 @@ export function LoginForm() {
           autoCapitalize="none"
           required
           placeholder="nombre@ejemplo.com"
-          className="mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-primary outline-none transition placeholder:text-brand-muted/65 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/30"
+          className="mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-ink outline-none transition placeholder:text-brand-muted/65 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/30"
         />
       </div>
 
       <div>
         <div className="flex items-center justify-between gap-4">
-          <label htmlFor="password" className="text-sm font-semibold text-brand-primary">
+          <label htmlFor="password" className="text-sm font-semibold text-brand-ink">
             Contraseña
           </label>
           <button
@@ -78,7 +78,7 @@ export function LoginForm() {
           autoComplete="current-password"
           required
           placeholder="Tu contraseña"
-          className="mt-1 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-primary outline-none transition placeholder:text-brand-muted/65 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/30"
+          className="mt-1 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-ink outline-none transition placeholder:text-brand-muted/65 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/30"
         />
       </div>
 

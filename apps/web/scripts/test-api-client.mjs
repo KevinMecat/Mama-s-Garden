@@ -21,7 +21,7 @@ const demoCode = ts.transpileModule(
     },
   },
 ).outputText;
-function client(origin, storage = new Map(), offline = false) {
+function client(origin, storage = new Map(), offline = false, source = origin ? "django" : "demo") {
   const calls = [];
   const events = [];
   const context = {
@@ -31,7 +31,7 @@ function client(origin, storage = new Map(), offline = false) {
     Response,
     FormData,
     structuredClone,
-    process: { env: { NODE_ENV: "production", NEXT_PUBLIC_API_URL: origin } },
+    process: { env: { NODE_ENV: "production", NEXT_PUBLIC_API_URL: origin, NEXT_PUBLIC_DATA_SOURCE: source } },
     window: {
       localStorage: {
         getItem: (key) => storage.get(key) ?? null,
@@ -251,3 +251,9 @@ assert.equal(realOffline.api.isDemoMode(), false);
 console.log(
   "Demo authentication, persistence, resources, CRUD, workflow, roles, reset isolation and real API security checks passed.",
 );
+
+const cloud = client("", absent.storage, false, "firebase");
+assert.equal(cloud.api.isDemoMode(), false);
+assert.equal(cloud.api.isFirebaseMode(), true);
+assert.equal((await cloud.api.apiFetch("/api/v1/auth/login/", { method: "POST", body: JSON.stringify({ email: "demo@mamasgarden.com", password: "demo1234" }) })).status, 405);
+assert.equal(cloud.calls.length, 0, "Real data mode never sends mock credentials to an API");

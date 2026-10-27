@@ -9,10 +9,12 @@
     "start": "firebase emulators:start --only hosting --config ../../firebase.deploy.json --project surco-finca",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node scripts/test-api-client.mjs",
+    "test": "node scripts/test-api-client.mjs && node scripts/test-firebase-models.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "firebase": "13.1.0",
+    "lucide-react": "1.62.0",
     "next": "16.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -28,5 +30,8 @@
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.6"
   }
 }

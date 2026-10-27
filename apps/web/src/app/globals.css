@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f1e8;
-  --foreground: #30311f;
-  --brand-primary: #484927;
-  --brand-secondary: #6a6a3b;
-  --brand-sage: #b9b392;
-  --brand-cream: #ebe7d6;
-  --brand-paper: #f8f6ee;
-  --brand-ink: #484927;
-  --brand-muted: #68684d;
-  --brand-soft: #ddd9c1;
-  --brand-border: #cbc6a8;
-  --brand-surface: #fbfaf4;
+  --background: #f6f8fa;
+  --foreground: #172b26;
+  --brand-primary: #047857;
+  --brand-secondary: #065f46;
+  --brand-sage: #a7f3d0;
+  --brand-cream: #f1f5f4;
+  --brand-paper: #f8faf9;
+  --brand-ink: #172b26;
+  --brand-muted: #64716c;
+  --brand-soft: #e2e8e5;
+  --brand-border: #e2e8e5;
+  --brand-surface: #ffffff;
 }
 
 @theme inline {
@@ -28,46 +28,107 @@
   --color-brand-soft: var(--brand-soft);
   --color-brand-border: var(--brand-border);
   --color-brand-surface: var(--brand-surface);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+  button,
+  summary,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid #059669;
+    outline-offset: 3px;
+  }
+  input,
+  select,
+  textarea {
+    accent-color: #047857;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.025em;
+  }
+  ::selection {
+    background: #a7f3d0;
+    color: #064e3b;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-xl border border-neutral-200/80 bg-white shadow-sm;
+  }
+  .kpi-card {
+    @apply relative overflow-hidden rounded-xl border border-neutral-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold tracking-wide text-neutral-500;
+  }
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl;
+  }
+  .nav-icon-button {
+    @apply inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:outline-white;
+  }
+  .menu-panel {
+    @apply absolute right-0 z-50 mt-2 w-64 rounded-xl border border-neutral-200 bg-white p-2 text-sm text-neutral-800 shadow-xl;
+  }
+  .menu-item {
+    @apply flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-neutral-100;
+  }
 }
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
 }
-
-::selection {
-  background: var(--brand-sage);
-  color: var(--brand-primary);
+summary {
+  list-style: none;
 }
-
-.font-display {
-  font-family: Georgia, "Times New Roman", serif;
+summary::-webkit-details-marker {
+  display: none;
 }
-
 .leaf-glow {
   position: absolute;
   width: 22rem;
   height: 22rem;
   border-radius: 9999px;
-  background: rgba(185, 179, 146, 0.4);
+  background: rgb(16 185 129 / 12%);
   filter: blur(60px);
   pointer-events: none;
 }
-
 .leaf-glow-top {
   top: -8rem;
   right: -9rem;
 }
-
 .leaf-glow-bottom {
   bottom: -10rem;
   left: -8rem;
 }
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+[draggable="true"] { cursor: grab; }
+[draggable="true"]:active { cursor: grabbing; }

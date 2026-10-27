@@ -1,62 +1,44 @@
 "use client";
 import { ClientPage } from "@/components/client-page";
 import Link from "next/link";
-import { ProjectCard } from "@/components/projects/project-card";
+import { Plus, FolderKanban } from "lucide-react";
+import { ProjectBoard } from "@/components/projects/project-board";
 import { getProjects, requireUser } from "@/lib/page-api";
-
 async function loadPage() {
   const user = await requireUser();
   const projects = await getProjects();
-  const activeProjects = projects.filter((project) => project.status === "active");
-  const inactiveProjects = projects.filter((project) => project.status !== "active");
-
   return (
-    <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-3xl">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-secondary">Centros de costos</p>
-          <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-brand-primary sm:text-5xl">Proyectos</h1>
-          <p className="mt-4 text-lg leading-8 text-brand-muted">
-            Cada iniciativa mantiene sus recursos, responsables y resultados separados del resto de la finca.
+    <div className="mx-auto max-w-[100rem] px-4 py-7 sm:px-7 lg:px-8">
+      <p className="eyebrow">Operaciones / Centros de costos</p>
+      <header className="mt-2 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="page-title">Proyectos</h1>
+          <p className="mt-2 max-w-xl text-sm text-neutral-500">
+            Organiza las iniciativas, recursos y resultados de la finca en un
+            solo tablero.
           </p>
         </div>
-        {user.role === "ADMIN" ? (
+        {user.role === "ADMIN" && (
           <Link
             href="/dashboard/projects/new"
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand-primary px-5 text-sm font-bold text-white shadow-[0_12px_30px_rgba(72,73,39,0.16)] transition hover:bg-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary sm:w-fit"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800"
           >
+            <Plus size={16} />
             Nuevo proyecto
           </Link>
-        ) : null}
-      </header>
-
-      <section className="mt-10" aria-labelledby="active-projects-title">
-        <div className="flex items-center justify-between gap-4">
-          <h2 id="active-projects-title" className="font-display text-2xl font-semibold text-brand-primary">Proyectos activos</h2>
-          <p className="text-sm font-semibold text-brand-muted">{activeProjects.length} en operación</p>
-        </div>
-
-        {activeProjects.length ? (
-          <div className="mt-5 grid gap-5 xl:grid-cols-2">
-            {activeProjects.map((project) => <ProjectCard key={project.code} project={project} />)}
-          </div>
-        ) : (
-          <div className="mt-5 rounded-[1.5rem] border border-dashed border-brand-border bg-brand-surface px-6 py-12 text-center">
-            <p className="font-display text-2xl font-semibold text-brand-primary">Aún no hay proyectos activos</p>
-            <p className="mt-2 text-brand-muted">Activa o crea un proyecto para comenzar a separar sus costos.</p>
-          </div>
         )}
-      </section>
-
-      {inactiveProjects.length ? (
-        <section className="mt-12" aria-labelledby="other-projects-title">
-          <h2 id="other-projects-title" className="font-display text-2xl font-semibold text-brand-primary">Borradores y finalizados</h2>
-          <div className="mt-5 grid gap-5 xl:grid-cols-2">
-            {inactiveProjects.map((project) => <ProjectCard key={project.code} project={project} />)}
-          </div>
-        </section>
-      ) : null}
+      </header>
+      <div className="mt-6 flex items-center gap-2 border-b border-neutral-200 pb-3 text-sm font-semibold text-emerald-800">
+        <FolderKanban size={17} />
+        Tablero de proyectos
+        <span className="ml-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs">
+          {projects.length}
+        </span>
+      </div>
+      <ProjectBoard projects={projects} administrator={user.role === "ADMIN"} />
     </div>
   );
 }
-export default function ClientView(){return <ClientPage load={loadPage}/>;}
+export default function ClientView() {
+  return <ClientPage load={loadPage} />;
+}

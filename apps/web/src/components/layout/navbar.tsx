@@ -23,7 +23,7 @@ export function Navbar() {
             className="size-11 shrink-0"
             priority
           />
-          <span className="hidden truncate font-display text-lg font-semibold text-brand-primary min-[420px]:block sm:text-xl">
+          <span className="hidden truncate font-sans text-lg font-semibold text-brand-ink min-[420px]:block sm:text-xl">
             Mama&apos;s Garden
           </span>
         </Link>
@@ -32,19 +32,19 @@ export function Navbar() {
           <div className="hidden items-center md:flex">
             <Link
               href="/#esencia"
-              className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-brand-primary underline-offset-8 hover:text-brand-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+              className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-brand-ink underline-offset-8 hover:text-brand-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             >
               Nuestra esencia
             </Link>
             <Link
               href="/#recorrido"
-              className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-brand-primary underline-offset-8 hover:text-brand-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+              className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-brand-ink underline-offset-8 hover:text-brand-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             >
               La finca
             </Link>
             <Link
               href="/#contacto"
-              className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-brand-primary underline-offset-8 hover:text-brand-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+              className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-brand-ink underline-offset-8 hover:text-brand-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             >
               Contacto
             </Link>

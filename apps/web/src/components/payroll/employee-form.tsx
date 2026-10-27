@@ -66,8 +66,8 @@ export function EmployeeForm({ employee, rates = [], today }: EmployeeFormProps)
     }
   }
 
-  const inputClass = "mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-primary outline-none focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/25";
-  const labelClass = "text-sm font-semibold text-brand-primary";
+  const inputClass = "mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-ink outline-none focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/25";
+  const labelClass = "text-sm font-semibold text-brand-ink";
 
   return <form onSubmit={submit} className="mt-8 space-y-6">
     <div className="grid gap-5 sm:grid-cols-2">
@@ -78,10 +78,10 @@ export function EmployeeForm({ employee, rates = [], today }: EmployeeFormProps)
       <div><label htmlFor="phone" className={labelClass}>Teléfono</label><input id="phone" name="phone" type="tel" maxLength={30} defaultValue={employee?.phone} className={inputClass} /></div>
       <div><label htmlFor="hire_date" className={labelClass}>Fecha de contratación</label><input id="hire_date" name="hire_date" type="date" required defaultValue={employee?.hire_date ?? today} className={inputClass} /></div>
     </div>
-    <label className="flex min-h-12 items-center gap-3 rounded-xl border border-brand-border bg-brand-cream/40 px-4 text-sm font-semibold text-brand-primary"><input name="is_active" type="checkbox" defaultChecked={employee?.is_active ?? true} className="size-5 accent-brand-primary" />Empleado activo</label>
+    <label className="flex min-h-12 items-center gap-3 rounded-xl border border-brand-border bg-brand-cream/40 px-4 text-sm font-semibold text-brand-ink"><input name="is_active" type="checkbox" defaultChecked={employee?.is_active ?? true} className="size-5 accent-brand-primary" />Empleado activo</label>
 
     <fieldset className="rounded-2xl border border-brand-border bg-brand-paper p-5">
-      <legend className="px-2 font-display text-xl font-semibold text-brand-primary">{employee ? "Nueva tarifa salarial" : "Tarifa salarial inicial"}</legend>
+      <legend className="px-2 font-sans text-xl font-semibold text-brand-ink">{employee ? "Nueva tarifa salarial" : "Tarifa salarial inicial"}</legend>
       {employee ? <p className="mt-1 text-sm text-brand-muted">Déjalo vacío si no cambiarás el salario. Una tarifa nueva cerrará automáticamente la vigencia anterior.</p> : null}
       <div className="mt-4 grid gap-5 sm:grid-cols-2">
         <div><label htmlFor="new_daily_rate" className={labelClass}>Salario diario (GTQ)</label><input id="new_daily_rate" name="new_daily_rate" type="number" inputMode="decimal" min="0.01" step="0.01" required={!employee} value={newRate} onChange={event => setNewRate(event.target.value)} className={inputClass} /></div>
@@ -89,8 +89,8 @@ export function EmployeeForm({ employee, rates = [], today }: EmployeeFormProps)
       </div>
     </fieldset>
 
-    {rates.length ? <section aria-labelledby="salary-history-title"><h2 id="salary-history-title" className="font-display text-xl font-semibold text-brand-primary">Historial salarial</h2><div className="mt-3 grid gap-2">{rates.map(rate => <div key={rate.id} className="flex flex-wrap justify-between gap-2 rounded-xl border border-brand-border bg-white px-4 py-3 text-sm"><span className="font-semibold text-brand-primary">{money.format(Number(rate.daily_rate))} diarios</span><span className="text-brand-muted">{rate.valid_from} — {rate.valid_to ?? "Actual"}</span></div>)}</div></section> : null}
+    {rates.length ? <section aria-labelledby="salary-history-title"><h2 id="salary-history-title" className="font-sans text-xl font-semibold text-brand-ink">Historial salarial</h2><div className="mt-3 grid gap-2">{rates.map(rate => <div key={rate.id} className="flex flex-wrap justify-between gap-2 rounded-xl border border-brand-border bg-white px-4 py-3 text-sm"><span className="font-semibold text-brand-ink">{money.format(Number(rate.daily_rate))} diarios</span><span className="text-brand-muted">{rate.valid_from} — {rate.valid_to ?? "Actual"}</span></div>)}</div></section> : null}
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
-    <div className="flex flex-col-reverse gap-3 border-t border-brand-border pt-6 sm:flex-row sm:justify-between"><div>{employee ? <button type="button" onClick={remove} disabled={busy} className="min-h-12 rounded-xl border border-red-200 px-5 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">Eliminar</button> : null}</div><div className="flex flex-col-reverse gap-3 sm:flex-row"><Link href="/dashboard/employees" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-bold text-brand-primary">Cancelar</Link><button disabled={busy} className="min-h-12 rounded-xl bg-brand-primary px-6 text-sm font-bold text-white disabled:opacity-50">{busy ? "Guardando…" : employee ? "Guardar cambios" : "Agregar trabajador"}</button></div></div>
+    <div className="flex flex-col-reverse gap-3 border-t border-brand-border pt-6 sm:flex-row sm:justify-between"><div>{employee ? <button type="button" onClick={remove} disabled={busy} className="min-h-12 rounded-xl border border-red-200 px-5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">Eliminar</button> : null}</div><div className="flex flex-col-reverse gap-3 sm:flex-row"><Link href="/dashboard/employees" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-semibold text-brand-ink">Cancelar</Link><button disabled={busy} className="min-h-12 rounded-xl bg-brand-primary px-6 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Guardando…" : employee ? "Guardar cambios" : "Agregar trabajador"}</button></div></div>
   </form>;
 }

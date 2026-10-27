@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, isFirebaseMode } from "@/lib/api-client";
 import type { AuthResponse, AuthUser } from "@/types/auth";
 
 const AUTH_ROOT = "/api/v1/auth";
@@ -38,7 +38,21 @@ export async function getCsrfToken() {
   return payload.csrfToken;
 }
 
-export async function login(email: string, password: string): Promise<AuthUser> {
+export async function login(
+  email: string,
+  password: string,
+): Promise<AuthUser> {
+  if (isFirebaseMode()) {
+    try {
+      return await (
+        await import("@/lib/firebase-client")
+      ).firebaseLogin(email, password);
+    } catch {
+      throw new AuthApiError(
+        "No fue posible acceder. Verifica tu correo y contraseña de Firebase, tu perfil activo y la conexión.",
+      );
+    }
+  }
   const csrfToken = await getCsrfToken();
   const response = await apiFetch(`${AUTH_ROOT}/login/`, {
     method: "POST",
@@ -59,6 +73,10 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 }
 
 export async function logout() {
+  if (isFirebaseMode()) {
+    await (await import("@/lib/firebase-client")).firebaseLogout();
+    return;
+  }
   const csrfToken = await getCsrfToken();
   const response = await apiFetch(`${AUTH_ROOT}/logout/`, {
     method: "POST",
@@ -75,6 +93,8 @@ export async function logout() {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
+  if (isFirebaseMode())
+    return (await import("@/lib/firebase-client")).firebaseCurrentUser();
   const response = await apiFetch(`${AUTH_ROOT}/me/`, {
     cache: "no-store",
     credentials: "include",
