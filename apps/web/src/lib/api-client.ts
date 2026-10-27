@@ -37,7 +37,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     return new Response(
       JSON.stringify({
         detail:
-          "La conexión Firebase es de solo lectura y no utiliza la API de Django.",
+          "Este proveedor utiliza Firestore para las operaciones autorizadas.",
       }),
       { status: 405, headers: { "Content-Type": "application/json" } },
     );

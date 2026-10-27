@@ -7,6 +7,7 @@ const dirty =
   execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()
     .length > 0;
 const { version } = JSON.parse(fs.readFileSync("package.json", "utf8"));
+if (process.env.NEXT_PUBLIC_DATA_SOURCE === "demo") throw Error("Mock sessions cannot be published.");
 if (process.env.NEXT_PUBLIC_FIREBASE_EMULATORS === "1")
   throw Error("Emulator builds cannot be published.");
 fs.mkdirSync("public", { recursive: true });

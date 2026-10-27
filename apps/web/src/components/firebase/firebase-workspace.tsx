@@ -1027,8 +1027,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
           className="surface-card mt-6 border-red-200 p-6 text-sm text-red-800"
         >
           No fue posible leer los datos con esta sesión. Verifica tu conexión y
-          los permisos del perfil. No se sustituyen los registros por datos de
-          demostración.
+          los permisos del perfil. Actualiza o vuelve a iniciar sesión.
         </div>
       ) : (
         content

@@ -4,8 +4,6 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { AUTH_CHANGED_EVENT } from "@/components/auth/auth-controls";
-import { isDemoMode } from "@/lib/api-client";
-import { resetDemo } from "@/lib/demo-api";
 import { AuthApiError, login } from "@/lib/auth-api";
 
 export function LoginForm() {
@@ -91,7 +89,6 @@ export function LoginForm() {
           {error}
         </p>
       ) : null}
-      {isDemoMode() && error && <button type="button" onClick={resetDemo} className="text-sm font-semibold underline">Restablecer datos demo locales</button>}
 
       <button
         type="submit"

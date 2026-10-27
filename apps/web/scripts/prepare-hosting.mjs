@@ -5,6 +5,8 @@ import { createHash } from "node:crypto";
 // Run from apps/web after an audited build. Only out/ is deployable.
 const root = path.resolve("../..");
 const out = path.resolve("out");
+const provenance = JSON.parse(fs.readFileSync(path.join(out, "build-info.json"), "utf8"));
+if (provenance.dirty || provenance.dataSource === "demo") throw new Error("Only a clean production build can be published.");
 const hashes = new Set();
 let pages = 0;
 function visit(dir) {
@@ -14,6 +16,7 @@ function visit(dir) {
     if (entry.isDirectory()) { visit(file); continue; }
     if (entry.name.endsWith(".map")) { fs.unlinkSync(file); continue; }
     if (/^\.env|\.(pem|key|db|sqlite3)$|package-lock\.json/.test(entry.name)) throw new Error("Forbidden public artifact");
+    if (/\.(js|html)$/.test(entry.name) && /demo@mamasgarden\.com|demo1234|finca\.demo\.v1|Modo Demostración|demo-workforce-browser/.test(fs.readFileSync(file, "utf8"))) throw new Error("Synthetic fixture or mock UI in public export");
     if (file.endsWith(".html")) {
       pages++;
       const html = fs.readFileSync(file, "utf8");

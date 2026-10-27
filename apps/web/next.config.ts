@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: process.env.BUILD_AUDIT_MAPS === "1",
   images: { unoptimized: true },
+  ...(process.env.NODE_ENV === "production" ? {
+    turbopack: { resolveAlias: { "@/lib/demo-api": "./src/lib/disabled-demo-api.ts" } },
+  } : {}),
   ...(process.env.NODE_ENV === "development" ? {
     async rewrites() {
       const origin = process.env.API_INTERNAL_URL ?? "http://localhost:8000";

@@ -1,9 +1,7 @@
 "use client";
-import { ShieldCheck, Monitor, RotateCcw } from "lucide-react";
+import { ShieldCheck, Monitor } from "lucide-react";
 import { ClientPage } from "@/components/client-page";
 import { requireUser } from "@/lib/page-api";
-import { isDemoMode } from "@/lib/api-client";
-import { resetDemo } from "@/lib/demo-api";
 async function loadPage() {
   const user = await requireUser();
   return (
@@ -49,26 +47,8 @@ async function loadPage() {
           Entorno de la aplicación
         </h2>
         <p className="mt-4 text-sm text-neutral-600">
-          {isDemoMode()
-            ? "Modo Demostración / Offline. Los datos ficticios se guardan solo en este navegador. No ingreses información real."
-            : "API de Django configurada. Los datos y permisos los gestiona el servicio de la finca."}
+          Sesión privada vinculada al servicio de datos de la finca.
         </p>
-        {isDemoMode() && (
-          <>
-            <p className="mt-3 text-xs text-neutral-500">
-              Restablecer elimina los cambios de demostración y recupera los
-              ejemplos iniciales. Tu sesión se conserva.
-            </p>
-            <button
-              type="button"
-              onClick={resetDemo}
-              className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg border border-neutral-200 px-4 text-sm font-semibold hover:bg-neutral-50"
-            >
-              <RotateCcw size={16} />
-              Restablecer demo
-            </button>
-          </>
-        )}
       </article>
     </section>
   );
