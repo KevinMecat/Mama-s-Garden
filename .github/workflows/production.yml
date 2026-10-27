@@ -1,7 +1,7 @@
 name: production
 on:
   pull_request:
-    branches: [main]
+    branches: [main, chore/environment-setup]
   push:
     branches: [main]
   workflow_dispatch:
@@ -55,4 +55,4 @@ jobs:
         run: python scripts/ci_diagnostics.py
       - name: Cleanup ephemeral stack
         if: always()
-        run: docker compose --env-file .env.ci -f docker-compose.prod.yml down --volumes --remove-orphans
+        run: docker compose --env-file .env.ci -f docker-compose.prod.yml down --remove-orphans

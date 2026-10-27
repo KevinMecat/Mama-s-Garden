@@ -7,9 +7,9 @@ from pathlib import Path, PurePosixPath
 
 SUBJECT = re.compile(
     r"(feat|fix|refactor|docs|chore|style|test|perf)"
-    r"\((root|ui|api|auth|db|docker|config)\): \S.*"
+    r"\((root|ui|api|auth|db|docker|config|workforce)\): \S.*"
 )
-BRANCH = re.compile(r"(?:feat|fix|chore)/[a-z0-9]+(?:-[a-z0-9]+)*")
+BRANCH = re.compile(r"(?:feat|feature|fix|chore)/[a-z0-9]+(?:-[a-z0-9]+)*")
 
 
 def git(*args):

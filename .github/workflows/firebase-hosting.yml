@@ -1,7 +1,7 @@
 name: firebase-hosting
 on:
   pull_request:
-    branches: [main]
+    branches: [main, chore/environment-setup]
   push:
     branches: [main]
   workflow_dispatch:
