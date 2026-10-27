@@ -14,47 +14,41 @@ import {
   Leaf,
   LogOut,
   Menu,
-  Package,
   Plus,
   Search,
   Settings2,
   Sprout,
   Users,
   Wallet,
-  Wheat,
   X,
   CalendarCheck,
-  ShoppingBasket,
   ListTodo,
-  RotateCcw,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { logout } from "@/lib/auth-api";
-import { isDemoMode, isFirebaseMode } from "@/lib/api-client";
-import { resetDemo } from "@/lib/demo-api";
+import { isFirebaseMode } from "@/lib/api-client";
 import { getProjects, getEmployees } from "@/lib/page-api";
 import type { AuthUser } from "@/types/auth";
 
 const groups = [
   {
-    title: "Espacio de trabajo",
-    links: [{ href: "/dashboard", label: "Resumen", icon: LayoutDashboard }],
-  },
-  {
-    title: "Operaciones",
+    title: "Operación",
     links: [
-      { href: "/dashboard/workforce", label: "Trabajo de hoy", icon: ListTodo },
+      { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
       {
-        href: "/dashboard/projects",
-        label: isFirebaseMode() ? "Unidades" : "Proyectos",
-        icon: FolderKanban,
+        href: "/dashboard/workforce",
+        label: "Trabajo de hoy / Kanban",
+        icon: ListTodo,
       },
-      { href: "/dashboard/crews", label: "Cuadrillas", icon: Users },
-      { href: "/dashboard/production", label: "Producción", icon: Wheat },
       {
         href: "/dashboard/attendance",
         label: "Asistencia",
         icon: CalendarCheck,
       },
+      { href: "/dashboard/employees", label: "Trabajadores", icon: Users },
+      { href: "/dashboard/units", label: "Unidades", icon: Sprout },
+      { href: "/dashboard/projects", label: "Proyectos", icon: FolderKanban },
     ],
   },
   {
@@ -67,30 +61,24 @@ const groups = [
         admin: true,
       },
       {
+        href: "/dashboard/finance-summary",
+        label: "Resumen financiero",
+        icon: Wallet,
+        admin: true,
+      },
+      {
         href: "/dashboard/payroll",
         label: "Nómina",
         icon: Wallet,
         admin: true,
       },
-      {
-        href: "/dashboard/employees",
-        label: "Personal",
-        icon: Users,
-        admin: true,
-      },
-      { href: "/dashboard/products", label: "Productos", icon: Package },
-      {
-        href: "/dashboard/sales",
-        label: "Ventas",
-        icon: ShoppingBasket,
-        admin: true,
-      },
+      { href: "/dashboard/users", label: "Usuarios", icon: Users, admin: true },
     ],
   },
   {
-    title: "Preferencias",
+    title: "Configuración",
     links: [
-      { href: "/dashboard/settings", label: "Configuración", icon: Settings2 },
+      { href: "/dashboard/settings", label: "Mi cuenta", icon: Settings2 },
     ],
   },
 ];
@@ -115,15 +103,72 @@ export function DashboardNavigation({ user }: { user: AuthUser }) {
     .map((part) => part[0])
     .join("")
     .toUpperCase();
+  const [workerCount, setWorkerCount] = useState<number>();
+  useEffect(() => {
+    const theme = localStorage.getItem("finca-theme");
+    document.documentElement.classList.toggle(
+      "dark",
+      theme === "dark" ||
+        (!theme && matchMedia("(prefers-color-scheme: dark)").matches),
+    );
+    const count = (event: Event) =>
+      setWorkerCount((event as CustomEvent<number>).detail);
+    window.addEventListener("finca:worker-count", count);
+    return () => window.removeEventListener("finca:worker-count", count);
+  }, []);
   const firebaseRoutes: Record<string, string[]> = {
-    ADMIN: ["overview", "workforce", "projects", "crews", "production", "attendance", "finance", "payroll", "employees", "products", "sales", "settings"],
-    MANAGER: ["overview", "projects", "finance", "sales", "attendance", "settings"],
-    SUPERVISOR: ["overview", "workforce", "employees", "crews", "attendance", "settings"],
-    WORKER: ["overview", "projects", "attendance", "settings"],
+    ADMIN: [
+      "overview",
+      "workforce",
+      "projects",
+      "units",
+      "attendance",
+      "finance",
+      "finance-summary",
+      "payroll",
+      "employees",
+      "users",
+      "settings",
+    ],
+    MANAGER: [
+      "overview",
+      "workforce",
+      "projects",
+      "units",
+      "employees",
+      "attendance",
+      "settings",
+    ],
+    SUPERVISOR: [
+      "overview",
+      "workforce",
+      "projects",
+      "units",
+      "employees",
+      "attendance",
+      "settings",
+    ],
+    WORKER: [
+      "overview",
+      "workforce",
+      "projects",
+      "units",
+      "attendance",
+      "settings",
+    ],
   };
-  const visibleGroups = groups.map(group => ({ ...group, links: group.links.filter(link => isFirebaseMode()
-    ? firebaseRoutes[user.role]?.includes(link.href.split("/")[2] || "overview")
-    : !("admin" in link && link.admin) || admin) }));
+  const visibleGroups = groups.map((group) => ({
+    ...group,
+    links: group.links.filter((link) =>
+      isFirebaseMode()
+        ? firebaseRoutes[user.role]?.includes(
+            link.href.split("/")[2] || "overview",
+          )
+          : !["units", "finance-summary", "users"].includes(link.href.split("/")[2]) &&
+            (link.href !== "/dashboard/employees" || admin) &&
+            (!("admin" in link && link.admin) || admin),
+    ),
+  }));
   const pages = visibleGroups.flatMap((group) =>
     group.links.map((link) => ({
       href: link.href,
@@ -262,17 +307,20 @@ export function DashboardNavigation({ user }: { user: AuthUser }) {
           aria-label="Inicio de Mama's Garden"
           className="flex shrink-0 items-center gap-2.5 rounded-lg"
         >
-          <span className="grid size-8 place-items-center rounded-lg bg-white">
+          <span className="brand-logo-backdrop grid size-8 place-items-center rounded-lg bg-white">
             <Image src="/brand/logo.svg" alt="" width={27} height={27} />
           </span>
           <span className="hidden text-sm font-semibold tracking-tight sm:block">
-            Mama&apos;s Garden
+            Finca Mama&apos;s Garden
+            <span className="mt-0.5 block text-[10px] font-normal text-white/65">
+              Troilo, León - Nicaragua
+            </span>
           </span>
         </Link>
         <div className="hidden h-6 w-px bg-white/15 lg:block" />
         <details className="relative hidden lg:block">
           <summary className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium hover:bg-white/10">
-            Finca principal <ChevronDown size={14} />
+            Troilo <ChevronDown size={14} />
           </summary>
           <div className="menu-panel left-0 right-auto">
             <p className="px-3 py-2 text-xs font-semibold text-neutral-500">
@@ -296,53 +344,28 @@ export function DashboardNavigation({ user }: { user: AuthUser }) {
             Ctrl K
           </kbd>
         </button>
-        {!isFirebaseMode() && (
-          <>
-            <details className="relative shrink-0">
-              <summary
-                aria-label="Crear"
-                className="flex h-9 items-center gap-1.5 rounded-lg bg-emerald-500 px-2.5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 sm:px-3"
-              >
-                <Plus size={17} />
-                <span className="hidden sm:inline">Crear</span>
-              </summary>
-              <div className="menu-panel">
-                <p className="px-3 py-2 text-xs font-semibold text-neutral-500">
-                  Agregar a tu espacio
-                </p>
-                {admin ? (
-                  <>
-                    <Link href="/dashboard/projects/new" className="menu-item">
-                      <FolderKanban size={16} />
-                      Proyecto
-                    </Link>
-                    <Link href="/dashboard/finance/new" className="menu-item">
-                      <Wallet size={16} />
-                      Movimiento financiero
-                    </Link>
-                    <Link href="/dashboard/employees/new" className="menu-item">
-                      <Users size={16} />
-                      Empleado
-                    </Link>
-                  </>
-                ) : (
-                  <Link href="/dashboard/workforce" className="menu-item">
-                    <ListTodo size={16} />
-                    Registrar trabajo
-                  </Link>
-                )}
-              </div>
-            </details>
-          </>
-        )}
-        {isDemoMode() && (
-          <span
-            title="Modo Demostración / Offline"
-            className="hidden rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] font-medium text-white/65 sm:block"
+        {(admin || user.role === "MANAGER" || user.role === "SUPERVISOR") && (
+          <Link
+            href="/dashboard/workforce?create=1"
+            className="flex h-9 shrink-0 items-center gap-1 rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-emerald-950 hover:bg-emerald-400"
           >
-            Demo
-          </span>
+            <Plus size={17} />
+            <span className="hidden sm:inline">Crear tarea</span>
+          </Link>
         )}
+        <button
+          type="button"
+          aria-label="Cambiar modo oscuro o claro"
+          title="Modo oscuro / claro"
+          className="nav-icon-button"
+          onClick={() => {
+            const dark = document.documentElement.classList.toggle("dark");
+            localStorage.setItem("finca-theme", dark ? "dark" : "light");
+          }}
+        >
+          <Moon size={18} className="dark:hidden" />
+          <Sun size={18} className="hidden dark:block" />
+        </button>
         <details className="relative shrink-0">
           <summary aria-label="Notificaciones" className="nav-icon-button">
             <Bell size={19} />
@@ -376,23 +399,11 @@ export function DashboardNavigation({ user }: { user: AuthUser }) {
                 {user.email}
               </p>
               <p className="mt-2 text-xs text-emerald-700">{user.role_label}</p>
-              {isDemoMode() && (
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
-                  Modo Demostración / Offline. Datos ficticios guardados en este
-                  navegador.
-                </p>
-              )}
             </div>
             <Link href="/dashboard/settings" className="menu-item">
               <Settings2 size={16} />
               Configuración
             </Link>
-            {isDemoMode() && (
-              <button type="button" className="menu-item" onClick={resetDemo}>
-                <RotateCcw size={16} />
-                Restablecer demo
-              </button>
-            )}
             <button
               type="button"
               disabled={closing}
@@ -458,6 +469,12 @@ export function DashboardNavigation({ user }: { user: AuthUser }) {
                       >
                         <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
                         {label}
+                        {href === "/dashboard/employees" &&
+                          workerCount !== undefined && (
+                            <span className="ml-auto rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800">
+                              {workerCount}
+                            </span>
+                          )}
                         {active && (
                           <span className="ml-auto size-1.5 rounded-full bg-emerald-600" />
                         )}

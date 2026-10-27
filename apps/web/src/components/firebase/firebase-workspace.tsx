@@ -17,6 +17,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { AuthUser } from "@/types/auth";
+import { FirebaseWorkforceBoard, WorkerActions, WorkforceAccounts } from "./firebase-workforce-board";
+import { workerAdjustments, applyAdjustments } from "@/lib/firebase-workforce";
 import {
   allowedCollections,
   readCollection,
@@ -147,7 +149,10 @@ const titles: Record<string, string> = {
   payroll: "Salarios y nómina",
   projects: "Unidades de negocio",
   crews: "Equipos por área",
-  workforce: "Trabajo y asistencia",
+  workforce: "Trabajo de hoy / Kanban",
+  users: "Usuarios y permisos",
+  "finance-summary": "Resumen financiero",
+  units: "Unidades de negocio",
   settings: "Mi cuenta",
   products: "Productos",
   production: "Producción",
@@ -176,13 +181,16 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
       if (!current || current.id !== user.id)
         throw new Error("Sesión no disponible.");
       const names = allowedCollections(current.role);
-      const values = await Promise.all(
+      const [values, patches] = await Promise.all([Promise.all(
         names.map(
           async (name) => [name, await readCollection(name, current)] as const,
         ),
-      );
+      ), workerAdjustments(current)]);
+      const result = Object.fromEntries(values);
+      if (result.workers) result.workers = applyAdjustments(result.workers, patches);
       if (active) {
-        setData(Object.fromEntries(values));
+        setData(result);
+        window.dispatchEvent(new CustomEvent("finca:worker-count", { detail: (result.workers ?? []).filter(row => row.status === "active").length }));
         setError(false);
         setLoading(false);
         setLoaded(
@@ -319,13 +327,13 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
                   </p>
                   <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-neutral-100 pt-4 text-xs">
                     <div>
-                      <dt className="text-neutral-500">Registro</dt>
+                      <dt className="text-neutral-500">Edad</dt>
                       <dd className="mt-1 font-medium">
-                        {text(worker.createdDate) || "Sin fecha"}
+                        {typeof worker.age === "number" ? `${worker.age} años` : "Sin registrar"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500">Salario vigente</dt>
+                      <dt className="text-neutral-500">Salario semanal</dt>
                       <dd className="mt-1 font-semibold text-emerald-800">
                         {salary ? (
                           <>
@@ -343,6 +351,8 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
                       </dd>
                     </div>
                   </dl>
+                  <p className="mt-4 text-xs text-neutral-500">Perfil: {text(worker.profile) || text(worker.area) || "Sin registrar"}</p>
+                  <WorkerActions user={user} worker={worker} changed={() => setRevision(value => value + 1)}/>
                   <details className="mt-4 border-t border-neutral-100 pt-3 text-xs">
                     <summary className="min-h-8 font-semibold text-emerald-700">
                       Ver historial salarial y períodos
@@ -885,10 +895,12 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
   }
   let content: React.ReactNode;
   if (section === "employees") content = renderWorkers();
-  else if (["attendance", "workforce"].includes(section))
+  else if (section === "workforce") content = <FirebaseWorkforceBoard user={user} workers={workers} units={units} attendance={attendance} create={params.get("create") === "1"} historyWorker={params.get("worker") || ""}/>;
+  else if (section === "users") content = <WorkforceAccounts user={user} workers={workers}/>;
+  else if (section === "attendance")
     content = renderAttendance();
-  else if (["finance", "sales"].includes(section)) content = renderFinance();
-  else if (section === "projects") content = renderUnits();
+  else if (["finance", "sales", "finance-summary"].includes(section)) content = renderFinance();
+  else if (["projects", "units"].includes(section)) content = renderUnits();
   else if (section === "payroll")
     content = (
       <>
@@ -952,8 +964,8 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
         </p>
         <p className="mt-5 border-t border-neutral-100 pt-4 text-xs leading-6 text-neutral-500">
           Proyecto: surco-finca. El perfil y sus permisos se verifican en
-          Firestore. Esta interfaz consulta datos y archivos; no crea, modifica
-          ni elimina registros. No se persisten colecciones en localStorage.
+          Firestore. Las tareas y revisiones operativas tienen historial propio.
+          Las fichas originales, salarios y asistencia se conservan. No se persisten colecciones en localStorage.
         </p>
       </article>
     );
@@ -976,13 +988,13 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
             {titles[section] || "Datos de la finca"}
           </h1>
           <p className="mt-2 text-sm text-neutral-500">
-            Firestore y Storage · surco-finca
+            Troilo, León · Nicaragua
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-100 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-800">
             <LockKeyhole size={12} />
-            Solo lectura
+            Datos de la finca
           </span>
           <button
             type="button"

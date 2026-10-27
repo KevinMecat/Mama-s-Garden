@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #f6f8fa;
@@ -132,3 +133,45 @@ summary::-webkit-details-marker {
 
 [draggable="true"] { cursor: grab; }
 [draggable="true"]:active { cursor: grabbing; }
+
+.dark {
+  color-scheme: dark;
+  --background: #141c11;
+  --foreground: #e5ebdf;
+  --brand-surface: #1d2818;
+  --brand-border: #2d3d26;
+  --brand-ink: #e5ebdf;
+  --brand-muted: #a1af97;
+  --brand-paper: #172113;
+  --brand-cream: #172113;
+  --brand-soft: #2d3d26;
+}
+@layer components {
+  .f-input { @apply min-h-11 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800; }
+  .f-button { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50; }
+  .f-primary { @apply border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800; }
+  .work-dialog { @apply fixed inset-0 m-auto max-h-[90svh] w-[calc(100%-1.5rem)] max-w-2xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl backdrop:bg-neutral-950/60; }
+  .priority-low { @apply bg-neutral-100 text-neutral-600; }
+  .priority-normal { @apply bg-sky-50 text-sky-800; }
+  .priority-high { @apply bg-amber-50 text-amber-800; }
+  .priority-urgent { @apply bg-red-50 text-red-800; }
+}
+/* Legacy screens share these semantic surfaces until their API migration. */
+.dark :is(.bg-white, .surface-card, .kpi-card, .menu-panel, .work-dialog, .f-input, .f-button) { background-color: #1d2818; border-color: #2d3d26; }
+.dark :is(.bg-neutral-50, .bg-neutral-100, [class*="bg-neutral-100/"], .hover\:bg-neutral-100:hover, .menu-item:hover) { background-color: #24321e; }
+.dark :is(.text-neutral-900, .text-neutral-800, .text-neutral-700, .page-title, .work-dialog, .f-input, .f-button, .menu-panel) { color: #e5ebdf; }
+.dark :is(.text-neutral-600, .text-neutral-500, .text-neutral-400, .eyebrow) { color: #a7b49e; }
+.dark :is([class*="border-neutral-"], [class*="divide-neutral-"]) { border-color: #2d3d26; }
+.dark :is(.bg-emerald-50, .bg-emerald-100) { background-color: #253f2a; }
+.dark :is(.text-emerald-700, .text-emerald-800, .text-emerald-900) { color: #9cdbab; }
+.dark :is(.bg-red-50, .priority-urgent) { background-color: #472820; }
+.dark :is(.text-red-700, .text-red-800, .priority-urgent) { color: #ffc3b7; }
+.dark :is(.bg-amber-50, .priority-high) { background-color: #40391c; }
+.dark :is(.text-amber-700, .text-amber-800, .priority-high) { color: #f4d98e; }
+.dark .priority-normal { background-color: #203b42; color: #b1dce4; }
+.dark .f-primary { background-color: #16764c; color: #fff; border-color: #23875b; }
+.dark .f-primary:hover { background-color: #208759; }
+.dark .brand-logo-backdrop { background-color: #fff; }
+input, select, textarea { max-width: 100%; }
+.work-dialog form { min-width: 0; }
+progress { overflow: hidden; border-radius: 1rem; }

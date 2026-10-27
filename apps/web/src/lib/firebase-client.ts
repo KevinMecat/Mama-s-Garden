@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   type User,
+  connectAuthEmulator,
 } from "firebase/auth";
 import {
   initializeFirestore,
@@ -21,8 +22,9 @@ import {
   where,
   type QueryDocumentSnapshot,
   type DocumentData,
+  connectFirestoreEmulator,
 } from "firebase/firestore";
-import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, getDownloadURL, connectStorageEmulator } from "firebase/storage";
 import type { AuthUser, UserRole } from "@/types/auth";
 
 export const FIREBASE_PROJECT = "surco-finca";
@@ -40,17 +42,27 @@ let client: ReturnType<typeof createClient> | undefined;
 let pending: Promise<ReturnType<typeof createClient>> | undefined;
 function createClient(config: FirebaseOptions) {
   const app = initializeApp(config, "mamas-garden-operational");
-  return {
+  const result = {
     auth: initializeAuth(app, { persistence: browserSessionPersistence }),
     db: initializeFirestore(app, { localCache: memoryLocalCache() }),
-    storage: getStorage(app, `gs://${FIREBASE_BUCKET}`),
+    storage: getStorage(app, `gs://${config.storageBucket}`),
   };
+  if (process.env.NEXT_PUBLIC_FIREBASE_EMULATORS === "1" && window.location.hostname === "127.0.0.1") {
+    connectAuthEmulator(result.auth, "http://127.0.0.1:9399", { disableWarnings: true });
+    connectFirestoreEmulator(result.db, "127.0.0.1", 8381);
+    connectStorageEmulator(result.storage, "127.0.0.1", 9398);
+  }
+  return result;
 }
 export async function firebaseClient() {
   if (typeof window === "undefined")
     throw new Error("Firebase solo se inicia en el navegador.");
   if (client) return client;
   pending ??= (async () => {
+    if (process.env.NEXT_PUBLIC_FIREBASE_EMULATORS === "1" && window.location.hostname === "127.0.0.1") {
+      client = createClient({ projectId: "demo-workforce-browser", apiKey: "emulator-public-key", authDomain: "demo-workforce-browser.firebaseapp.com", storageBucket: "demo-workforce-browser.appspot.com", appId: "emulator-browser" });
+      return client;
+    }
     // Firebase Hosting provides this public configuration. No admin credential is bundled.
     const response = await fetch("/__/firebase/init.json", {
       cache: "no-store",
@@ -84,9 +96,9 @@ const roles: Record<string, UserRole> = {
 };
 const labels: Record<string, string> = {
   admin: "Administrador",
-  manager: "Gerente",
+  manager: "Encargado",
   worker: "Trabajador",
-  supervisor: "Supervisor",
+  supervisor: "Encargado",
 };
 async function profile(user: User): Promise<AuthUser> {
   const { db } = await firebaseClient();
@@ -134,9 +146,9 @@ export function allowedCollections(role: UserRole): CollectionName[] {
       "payments",
     ];
   if (role === "MANAGER")
-    return ["transactions", "microbusinesses", "attendance"];
-  if (role === "SUPERVISOR") return ["workers", "attendance"];
-  return ["microbusinesses", "attendance"];
+    return ["workers", "microbusinesses", "attendance"];
+  if (role === "SUPERVISOR") return ["workers", "microbusinesses", "attendance"];
+  return ["workers", "microbusinesses", "attendance"];
 }
 export async function readCollection(
   name: CollectionName,
@@ -145,6 +157,12 @@ export async function readCollection(
   if (!allowedCollections(user.role).includes(name))
     throw new Error("Tu rol no tiene acceso a esta colección.");
   const { db } = await firebaseClient();
+  if (name === "workers" && user.role === "WORKER") {
+    const binding = await getDocFromServer(doc(db, "workforce_accounts", String(user.id)));
+    if (!binding.exists()) return [];
+    const row = await getDocFromServer(doc(db, "workers", String(binding.data().workerId)));
+    return row.exists() ? [{ ...row.data(), id: row.id }] : [];
+  }
   const result: CloudRow[] = [];
   let last: QueryDocumentSnapshot<DocumentData> | undefined;
   for (;;) {
@@ -152,7 +170,7 @@ export async function readCollection(
       orderBy(documentId()),
       limit(300),
       ...(last ? [startAfter(last)] : []),
-      ...(name === "workers" && user.role === "SUPERVISOR"
+      ...(name === "workers" && ["SUPERVISOR", "MANAGER"].includes(user.role)
         ? [where("status", "==", "active")]
         : []),
     ];
