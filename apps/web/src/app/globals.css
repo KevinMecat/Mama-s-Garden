@@ -3,15 +3,17 @@
 
 .farm-loader { display: flex; min-height: 240px; padding: 2rem 1rem; align-items: center; justify-content: center; flex-direction: column; text-align: center; color: var(--foreground); }
 .farm-loader--full { min-height: 100svh; background: var(--background); }
-.farm-loader__scene { display: grid; width: 160px; height: 160px; place-items: center; border-radius: 25%; background: #1f412b; }
+.farm-loader__scene { display: grid; width: 160px; height: 160px; place-items: center; }
 .farm-loader__plant { width: 52%; overflow: visible; }
-.farm-loader__stroke { fill: none; stroke: #96dda7; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+.farm-loader__stroke { fill: none; stroke: #047857; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
 .farm-loader__soil { stroke-dasharray: 72; stroke-dashoffset: 72; animation: farm-soil 4.5s ease-in-out infinite; }
 .farm-loader__stem { stroke-dasharray: 82; stroke-dashoffset: 82; animation: farm-stem 4.5s ease-in-out infinite; }
 .farm-loader__leaf { transform-box: fill-box; opacity: 0; animation: farm-leaf 4.5s ease-in-out infinite; }
 .farm-loader__leaf--left { transform-origin: right bottom; }
 .farm-loader__leaf--right { transform-origin: left bottom; animation-delay: .12s; }
-.farm-loader__sparkle { fill: #96dda7; opacity: 0; animation: farm-sparkle 4.5s ease-in-out infinite; }
+.farm-loader__sparkle { fill: #047857; opacity: 0; animation: farm-sparkle 4.5s ease-in-out infinite; }
+.dark .farm-loader__stroke { stroke: #96dda7; }
+.dark .farm-loader__sparkle { fill: #96dda7; }
 .farm-loader__sparkle--two { animation-delay: .25s; }
 .farm-loader__sparkle--three { animation-delay: .5s; }
 .farm-loader__title { margin-top: 1rem; font-weight: 700; font-size: 1rem; letter-spacing: -.02em; }
