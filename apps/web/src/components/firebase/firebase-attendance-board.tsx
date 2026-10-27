@@ -1,4 +1,5 @@
 "use client";
+import { BusyIndicator } from "@/components/farm-loader";
 import { useRef, useState } from "react";
 import {
   CalendarCheck,
@@ -295,6 +296,7 @@ export function FirebaseAttendanceBoard({
           {notice}
         </p>
       )}
+      {busy && <p role="status" className="flex items-center gap-2 text-sm text-emerald-700"><BusyIndicator /> Guardando asistencia…</p>}
       {isClosed(date) && (
         <p role="status" className="surface-card p-4 text-sm">
           Período cerrado: asistencia protegida contra cambios.

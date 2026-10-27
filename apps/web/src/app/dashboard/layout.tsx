@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation";
+import { FarmLoader } from "@/components/farm-loader";
 import { getCurrentUser } from "@/lib/auth-api";
 import { isFirebaseMode } from "@/lib/api-client";
 import { FirebaseWorkspace } from "@/components/firebase/firebase-workspace";
@@ -50,9 +51,7 @@ export default function DashboardLayout({
     );
   if (!user)
     return (
-      <p role="status" className="p-8">
-        Verificando sesión…
-      </p>
+      <FarmLoader fullPage message="Verificando tu sesión…" />
     );
   return (
     <div className="min-h-svh bg-background font-sans text-neutral-900">
@@ -61,9 +60,7 @@ export default function DashboardLayout({
         {isFirebaseMode() ? (
           <Suspense
             fallback={
-              <p role="status" className="p-8">
-                Cargando datos de la finca…
-              </p>
+              <FarmLoader message="Cargando datos de la finca…" />
             }
           >
             <FirebaseWorkspace user={user} />

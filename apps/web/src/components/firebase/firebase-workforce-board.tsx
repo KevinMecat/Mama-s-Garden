@@ -1,4 +1,5 @@
 "use client";
+import { FarmLoader } from "@/components/farm-loader";
 import {
   useEffect,
   useRef,
@@ -464,9 +465,7 @@ export function FirebaseWorkforceBoard({
         </p>
       )}
       {!data && !error && (
-        <p role="status" className="text-sm text-neutral-500">
-          Consultando el trabajo registrado…
-        </p>
+        <FarmLoader message="Cargando el trabajo registrado…" />
       )}
       {data && user.role === "WORKER" && !data.workerId && (
         <p role="status" className="surface-card p-5 text-sm">

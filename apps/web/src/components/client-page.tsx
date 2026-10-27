@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ClientNavigation } from "@/lib/client-navigation";
 import { DATA_CHANGED_EVENT } from "@/lib/api-client";
+import { FarmLoader } from "@/components/farm-loader";
 
 export interface ClientPageProps {
   params: Promise<{ id: string }>;
@@ -53,10 +54,10 @@ function ClientContent({ load }: { load: Loader }) {
   }, [load, query, router, version]);
 
   if (state.error) return <section role="alert" className="mx-auto max-w-xl p-8"><p>{state.error}</p><button className="mt-4 underline" onClick={() => { setState({}); setVersion(value => value + 1); }}>Reintentar</button></section>;
-  if (!state.content) return <p role="status" className="p-8 text-brand-muted">Cargando…</p>;
+  if (!state.content) return <FarmLoader message="Cargando información…" />;
   return state.content;
 }
 
 export function ClientPage({ load }: { load: Loader }) {
-  return <Suspense fallback={<p role="status" className="p-8">Cargando…</p>}><ClientContent load={load} /></Suspense>;
+  return <Suspense fallback={<FarmLoader />}><ClientContent load={load} /></Suspense>;
 }

@@ -18,6 +18,7 @@ import {
   Camera,
 } from "lucide-react";
 import { FirebaseAttendanceBoard } from "./firebase-attendance-board";
+import { FarmLoader, BusyIndicator } from "@/components/farm-loader";
 import { readAttendanceRevisions, mergeAttendance } from "@/lib/firebase-attendance";
 import type { AuthUser } from "@/types/auth";
 import { FirebaseWorkforceBoard, WorkerActions, WorkforceAccounts } from "./firebase-workforce-board";
@@ -398,7 +399,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
                   <input id="firebase-receipt" name="receipt" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => setReceiptName(event.target.files?.[0]?.name || "")} />
                 </label>
               </div>
-              <button type="submit" disabled={movementBusy} className="f-button f-primary sm:col-span-2">{movementBusy ? "Guardando…" : "Guardar movimiento"}</button>
+              <button type="submit" disabled={movementBusy} className="f-button f-primary sm:col-span-2">{movementBusy && <BusyIndicator />}{movementBusy ? "Guardando…" : "Guardar movimiento"}</button>
               {movementMessage && <p role="status" className="sm:col-span-2 text-sm text-emerald-700">{movementMessage}</p>}
             </form>}
           </section>
@@ -871,7 +872,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
             }}
             className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold disabled:opacity-50"
           >
-            <RefreshCw size={14} />
+            {loading ? <BusyIndicator /> : <RefreshCw size={14} />}
             {loading ? "Consultando…" : "Actualizar"}
           </button>
         </div>
@@ -882,9 +883,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
         </p>
       )}
       {loading ? (
-        <p role="status" className="mt-8 text-sm text-neutral-500">
-          Consultando tus colecciones autorizadas…
-        </p>
+        <FarmLoader message="Cargando información de la finca…" />
       ) : error ? (
         <div
           role="alert"
