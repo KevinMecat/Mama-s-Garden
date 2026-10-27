@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-client";
 import { getCsrfToken } from "@/lib/auth-api";
 import type { FinancialCategory } from "@/types/finance";
 
@@ -10,7 +11,7 @@ async function mutateCategory(
 ) {
   const csrfToken = await getCsrfToken();
   const url = id ? `/api/v1/finance/categories/${id}/` : "/api/v1/finance/categories/";
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method,
     cache: "no-store",
     credentials: "include",

@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "firebase emulators:start --only hosting --config ../../firebase.deploy.json --project surco-finca",
     "lint": "eslint .",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node scripts/test-api-client.mjs"
   },
   "dependencies": {
     "next": "16.4.2",

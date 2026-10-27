@@ -1,5 +1,8 @@
 # Auditoría de preparación — 22 de octubre de 2026
 
+> El registro inicial se conserva como evidencia histórica. El estado de los
+> controles nuevos y la aprobación de despliegue figuran en el anexo técnico final.
+
 ## Alcance y estado
 
 Preparación del repositorio, normas, exclusión de secretos, revisión inicial,
@@ -107,3 +110,212 @@ verificación remota del nuevo lockfile se consulta en GitHub Actions.
 La validación Linux detectó dos dependencias opcionales `@emnapi` omitidas por
 el npm local anterior. Se regeneró el lockfile con npm 11.19.0 y se fijó esa
 versión en `packageManager` y en CI para evitar diferencias entre instaladores.
+
+## Anexo técnico: hardening de producción — 22 de octubre de 2026
+
+Dominio canónico indicado por el propietario: **fincamamasgarden.com**.
+Alcance: código, imágenes, configuración reproducible y gobernanza del PR.
+No se han recibido acceso al servidor, identificación del proveedor ni secretos
+de producción. No se emiten certificados ACME ni se modifica DNS desde esta sesión.
+Una ejecución con certificado efímero de CI no certifica el sitio público.
+
+### Controles y evidencia
+
+- Nginx no root: TLS 1.2/1.3, ACME webroot, 301 canónico y headers en respuestas
+  de éxito y error; reemplaza la cadena de forwarding no confiable. No debe
+  colocarse detrás de otro proxy sin revisar expresamente esa frontera de confianza.
+- CSP con nonce aleatorio por respuesta para scripts Next.js, sin `unsafe-eval`
+  en producción. Las páginas son dinámicas y no se cachea HTML en la PWA.
+  Se conserva `style-src 'unsafe-inline'` para estilos dinámicos de React/Recharts:
+  la CSP no promete bloquear inyección de estilos; scripts inline sin nonce
+  permanecen bloqueados. No se aceptan comodines de orígenes ni scripts externos.
+- Django: Gunicorn, WhiteNoise, cookies Secure, HTTPS obligatorio, HSTS de un año
+  con includeSubDomains/preload y validación del entorno al importar settings.
+  Solo se confía en `X-Forwarded-Proto` porque API/DB no publican puertos y los
+  contenedores autorizados comparten una red privada explícita.
+  Se admite además el host interno fijo `api` para fetch SSR: Node no permite
+  sustituir Host con fetch. El proxy público solo admite el dominio canónico.
+  El socket administrativo de Gunicorn está desactivado en el runtime read-only.
+- API, web y proxy se ejecutan sin root, sin capacidades, con filesystem de solo
+  lectura, no-new-privileges y escrituras limitadas a tmpfs/volúmenes identificados.
+  Los digests de Node, Python, Nginx y PostgreSQL están fijados. PostgreSQL tampoco
+  publica puertos. Docker/host siguen siendo una frontera de confianza administrativa.
+- Secretos ausentes del build: solo el URL público se pasa como argumento.
+  La validación exige todas las claves de `config/environment.example`, coherencia
+  entre URL y credenciales de DB, host/origen exactos, DEBUG=False y secretos
+  largos/diversos; no prueba que un valor haya sido generado aleatoriamente.
+  Deben generarse en un gestor de secretos, no reutilizarse ni guardarse en logs.
+- Los comprobantes privados usan descarga autenticada con permisos de proyecto;
+  `/media/` nunca es un alias público en Nginx. Se añadió prueba de aislamiento
+  entre usuarios y de ausencia de caché en las descargas.
+- PR template y `pr-lint.yml`: título, rama y todos los commits nuevos; entradas
+  del evento se consumen como datos. CI tiene permisos read-only. El propietario
+  debe activar los required checks y revisión independiente según el runbook.
+
+Pruebas locales verificadas: cuatro pruebas de preflight/ausencia de exposición,
+ocho pruebas financieras (incluida descarga privada), Ruff y build Next.js con
+auditoría de **410 mapas y 65 trazas**, sin las dependencias de riesgo.
+El resultado definitivo de imágenes/TLS efímero lo determina el check requerido
+`production-security`, ejecutado en Linux con Docker. Los valores y claves
+efímeros de CI no se publican como artifacts.
+
+**Evidencia de integración verificada:** implementación
+`cc569827c00d58b94a3496793ae999613dead883`,
+[production-security correcto](https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39894248749),
+[calidad correcta](https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39894248770) y
+[reglas de PR correctas](https://github.com/KevinMecat/Mama-s-Garden/actions/runs/39894248761).
+Linux auditó 230 mapas/65 trazas de build y 31 trazas en runtime, sin las
+dependencias excluidas; el runtime no contiene mapas públicos. Se verificaron
+usuarios no root, PostgreSQL/migraciones, Nginx, 301, TLS efímero, cabeceras en
+2xx/4xx, CSP/nonce, cookies y forwarding. Django `check --deploy --tag security
+--fail-level WARNING` terminó sin incidencias. Esta evidencia no acredita DNS,
+CA pública ni renovación del dominio en un servidor real.
+
+### Mitigación y Riesgo Aceptado
+
+Identificador: **DEV-2026-10-22-01**. Responsable propuesto: **KevinMecat**.
+Vigencia máxima de la excepción técnica: **21 de noviembre de 2026, 00:00 UTC**.
+Estado: **aceptación técnica condicionada; aprobación de negocio pendiente**.
+
+Las cinco entradas altas son una misma cadena de desarrollo:
+`eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch`
+→ `braces`. El advisory raíz es
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
+denegación de servicio por patrones profundamente anidados. No se considera que
+las cinco entradas representen cinco vectores independientes en el servidor web.
+No se silencian globalmente los advisories ni se degrada Next.js para ocultarlos.
+
+La exclusión no se deduce únicamente de `devDependencies`:
+
+1. `npm ci --omit=dev` instala un árbol nuevo en una etapa independiente;
+   la imagen final usa ese árbol y no copia node_modules del builder.
+   Se retiran también los paquetes solo de declaraciones `@types`, que npm puede
+   instalar mediante peers opcionales de dependencias productivas.
+2. Un gate inspecciona los nombres de paquetes instalados en runtime y falla si
+   encuentra cualquiera de las cinco entradas o una dependencia directa de desarrollo.
+3. Durante la compilación se generan mapas de cliente/servidor y trazas NFT;
+   otro gate rechaza referencias a los módulos excluidos. Los mapas se retiran
+   antes de copiar artefactos a la imagen final y se comprueba su ausencia allí.
+4. CI ejecuta de nuevo el inventario dentro de la imagen final y prueba TLS,
+   forwarding y cabeceras sobre el Compose de producción completo.
+5. `audit-dependencies.mjs` exige cero hallazgos en producción y solo permite la
+   cadena/advisory documentados en desarrollo. Cualquier advisory nuevo o la
+   fecha de vencimiento hace fallar CI. El lock fija versiones e integridad.
+6. La compilación se realiza en runners efímeros sin secretos de producción,
+   con permisos read-only y sin publicación automática. No procesar patrones glob
+   recibidos de usuarios o PRs como argumentos arbitrarios del linter.
+
+**Conclusión técnica condicionada:** una release cuyo check `production-security`
+sea correcto tiene evidencia automatizada de exclusión de estos paquetes del
+árbol de ejecución y del código trazado/mapeado de cliente y servidor. No equivale
+a una prueba matemática sobre toda cadena de suministro ni sustituye escaneo de
+la imagen base/SBOM, revisión del código o aprobación humana. Un hallazgo nuevo,
+una modificación del bundle o del Dockerfile invalida la evidencia anterior.
+El riesgo residual aceptable se limita al agotamiento de recursos en el build
+aislado; no se acepta exposición de esta cadena a peticiones en producción.
+
+### Matriz de verificación TLS/HSTS y HTTP
+
+| Control | Criterio de aprobación | Evidencia reproducible |
+| --- | --- | --- |
+| Certificado público | CA confiable, SAN fincamamasgarden.com, vigente | `python scripts/verify_https.py fincamamasgarden.com`; pendiente en host real |
+| TLS | Solo 1.2/1.3; certificado/clave coincidentes | Config Nginx, `nginx -t`, instalación valida par/host/expiración |
+| HTTP | 301 a HTTPS canónico, excepto desafío ACME | `verify_https.py` valida Location y 301 |
+| HSTS | `max-age=31536000; includeSubDomains; preload` | Comparación exacta en login, API, static, media y 404 |
+| X-Frame-Options | DENY | Misma prueba 2xx/4xx, sin duplicados |
+| X-Content-Type-Options | nosniff | Misma prueba 2xx/4xx, sin duplicados |
+| Referrer-Policy | strict-origin-when-cross-origin | Misma prueba 2xx/4xx, sin duplicados |
+| CSP | Nonce en header y scripts HTML; strict-dynamic; sin unsafe-eval | `verify_https.py` y proxy Next.js |
+| Forwarding | Un X-Forwarded-Proto cliente no altera HTTPS percibido | Prueba con header falsificado, API debe responder 200 |
+| Cookies | CSRF Secure y sesión Secure/HttpOnly en settings | Endpoint CSRF y check Django security |
+| Privacidad | /media devuelve 404; descargas por API autenticada | Pruebas HTTP y financieras por pertenencia al proyecto |
+| Renovación | Certbot renueva, instala clave 0400 y recarga Nginx | `renew-tls.sh`; pendiente con ACME real y timer del host |
+
+HSTS/includeSubDomains exige verificar TODOS los subdominios antes de aprobar.
+El header preload no implica inscripción en la lista preload. Los resultados de
+CI emplean un certificado efímero y `--resolve 127.0.0.1`, nunca sustituyen las
+dos comprobaciones públicas pendientes de certificado y renovación.
+
+### Checklist firmado de aprobación final
+
+- [x] Configuración y gates técnicos preparados; secretos fuera de Git/build/logs.
+- [x] Preflight probado ante ausencia de variables, defaults e interpolación.
+- [x] Build local y mapas/trazas de exclusión revisados; archivos de release preparados.
+- [x] Check `production-security` verde para el SHA de implementación citado arriba.
+- [ ] Registrar SHA/digests exactos de la release final aprobada por los responsables.
+- [ ] Certificado CA pública y renovación automática verificados en el servidor real.
+- [ ] Subdominios revisados antes de activar política HSTS/preload en el dominio.
+- [ ] Branch Protection aplicada y comprobada, sin bypass de administradores.
+- [ ] Backup/restore, observabilidad y rollback probados con el responsable de operaciones.
+- [ ] Riesgo DEV-2026-10-22-01 aprobado por el propietario antes de su vencimiento.
+
+**Firma de preparación técnica:** Codex, agente de ingeniería asistida,
+22 de octubre de 2026. Alcance de firma: archivos y evidencia de pruebas
+indicados; no suplanta a una persona ni es una firma criptográfica.
+
+**Firma del aprobador de seguridad:** PENDIENTE — nombre, fecha, SHA y digests.
+**Firma del responsable de operaciones:** PENDIENTE — nombre, fecha y evidencia.
+**Decisión de pase a producción:** PENDIENTE hasta completar las casillas.
+
+Runbook: [production-deployment.md](production-deployment.md).
+Referencias oficiales:
+[proxy Nginx](https://nginx.org/en/docs/http/ngx_http_proxy_module.html),
+[Django SECURE_PROXY_SSL_HEADER](https://docs.djangoproject.com/en/5.2/ref/settings/#secure-proxy-ssl-header),
+[CSP Next.js](https://nextjs.org/docs/app/guides/content-security-policy),
+[Branch Protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
+
+
+## Anexo de sustitución de arquitectura — 26 de octubre de 2026
+
+Este anexo sustituye las conclusiones anteriores relativas al runtime Node,
+SSR, CSP con nonces y aceptación de cinco vulnerabilidades de desarrollo para
+el frontend publicado. Se autorizó convertir toda la aplicación a cliente
+estático y publicar con la API pendiente de despliegue.
+
+- Next.js exporta todas las pantallas; Django se consume desde el navegador mediante
+  `NEXT_PUBLIC_API_URL`. Vacío en el release: ninguna solicitud ni credencial se
+  envía a una API temporal. Login deshabilitado y panel con aviso de servicio pendiente.
+- Firebase Hosting publica únicamente `apps/web/out`; no contiene node_modules,
+  dependencias de desarrollo, secretos ni mapas de fuentes. El contenedor alternativo
+  también sirve exclusivamente estáticos con Nginx y usuario 101:101.
+- CSP usa hashes SHA-256 del HTML exportado; no requiere nonces ni unsafe-eval.
+  Se admite unsafe-inline exclusivamente en estilos por las necesidades de React/Recharts.
+- Auditoría completa npm y auditoría --omit=dev: cero hallazgos después de actualizar
+  el lockfile de forma compatible. DEV-2026-10-22-01 está RESUELTO; no hay excepción
+  activa ni aprobación de vulnerabilidades pendiente para esta cadena.
+- Build auditado: 405 mapas y 2 trazas sin módulos de desarrollo prohibidos;
+  preparación Hosting: 29 HTML y 29 hashes de scripts, mapas retirados antes del upload.
+- Backend: 35 pruebas correctas; Ruff y 5 pruebas del validador de entorno correctas.
+  Comprobación adicional de settings production: preflight CORS permitido/denegado,
+  credenciales, cookie CSRF Secure/SameSite=None correctos.
+- Navegador Edge real sobre el dominio publicado: inicio, login y ruta profunda
+  HTTP 200; hidratación sin errores, CSP aplicada, login deshabilitado y cero
+  solicitudes a la API sin configurar.
+- Cuenta CI sin claves permanentes, federación OIDC restringida al repositorio,
+  propietario, rama main y workflow exacto. Primer deploy de Actions pendiente de
+  integrar el workflow en main; el despliegue local live sí fue ejecutado.
+
+| Control del dominio real | Resultado |
+| --- | --- |
+| HTTP /login → HTTPS /login | 301 |
+| HTTPS /login, CA pública | 200, certificado validado |
+| HSTS | max-age=31536000; includeSubDomains; preload |
+| X-Frame-Options | DENY |
+| X-Content-Type-Options | nosniff |
+| Referrer-Policy | strict-origin-when-cross-origin |
+| CSP | hashes del build, origen de API parametrizado |
+| Dominio y www en Firebase | HOST_ACTIVE, OWNERSHIP_ACTIVE, CERT_ACTIVE |
+
+La cabecera preload expresa la política; no certifica inscripción del dominio
+al listado de preload de navegadores. Firebase aplica su propio max-age HSTS
+al dominio predeterminado web.app; el dominio personalizado tiene el valor requerido.
+
+**Alcance publicado:** frontend disponible en https://fincamamasgarden.com y
+https://surco-finca.web.app. La autenticación, datos y operaciones reales no están
+certificados de extremo a extremo hasta desplegar Django, configurar su origen
+HTTPS, recompilar y verificar las sesiones, CORS, CSRF y permisos con usuarios reales.
+Se conserva pendiente la aprobación operacional global anterior; no se inventa firma
+humana ni se certifica un backend inexistente.
+
+**Firma de ejecución técnica:** Codex, 26 de octubre de 2026; preparación y publicación
+frontend realizadas. Procedimiento reproducible: [firebase-hosting.md](firebase-hosting.md).

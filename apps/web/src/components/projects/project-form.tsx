@@ -31,7 +31,7 @@ export function ProjectForm({ project }: { project?: Project }) {
       };
       if (project) await updateProject(project.id, input);
       else await createProject(input);
-      router.replace(project ? `/dashboard/projects/${project.id}` : "/dashboard/projects");
+      router.replace(project ? `/dashboard/projects/detail?id=${project.id}` : "/dashboard/projects");
       router.refresh();
     } catch (requestError) {
       setError(
@@ -95,7 +95,7 @@ export function ProjectForm({ project }: { project?: Project }) {
       ) : null}
 
       <div className="flex flex-col-reverse gap-3 border-t border-brand-border pt-6 sm:flex-row sm:justify-end">
-        <Link href={project ? `/dashboard/projects/${project.id}` : "/dashboard/projects"} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-bold text-brand-primary transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
+        <Link href={project ? `/dashboard/projects/detail?id=${project.id}` : "/dashboard/projects"} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-bold text-brand-primary transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
           Cancelar
         </Link>
         <button type="submit" disabled={isSubmitting} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-primary px-6 text-sm font-bold text-white transition hover:bg-brand-secondary disabled:cursor-wait disabled:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">

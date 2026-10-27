@@ -1,6 +1,6 @@
-const CACHE_NAME = "finca-shell-v3";
+const CACHE_NAME = "finca-static-v5";
 const APP_SHELL = [
-  "/",
+  "/offline.html",
   "/manifest.webmanifest",
   "/brand/logo.svg",
   "/brand/app-icon.png",
@@ -40,6 +40,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Fetch HTML from the network to keep documents and deployment CSP in sync.
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(() => caches.match("/offline.html")));
+    return;
+  }
+  if (!APP_SHELL.includes(url.pathname) && !url.pathname.startsWith("/_next/static/")) {
+    return;
+  }
+
   event.respondWith(
     fetch(request)
       .then((response) => {
@@ -55,10 +64,6 @@ self.addEventListener("fetch", (event) => {
 
         if (cachedResponse) {
           return cachedResponse;
-        }
-
-        if (request.mode === "navigate") {
-          return caches.match("/");
         }
 
         return Response.error();

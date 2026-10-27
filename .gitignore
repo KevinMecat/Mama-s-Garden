@@ -78,6 +78,9 @@ tmp/
 temp/
 gitleaks-report*
 audit-reports/
+deploy/tls/
+deploy/acme/
+.firebase/
 
 # Editors and operating systems
 .vscode/
@@ -89,3 +92,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Generated deployment headers and temporary identity files
+firebase.deploy.json
+apps/web/hosting-csp.conf
+gha-creds-*.json

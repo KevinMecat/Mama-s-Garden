@@ -1,0 +1,136 @@
+name: mamas-garden-prod
+x-api: &api
+  image: mamas-garden-api:${IMAGE_TAG:-local}
+  build:
+    context: .
+    dockerfile: apps/api/Dockerfile
+    target: production
+  env_file:
+    - ${PROD_ENV_FILE:-.env.production}
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+  pids_limit: 128
+  volumes: [media:/app/apps/api/media]
+  networks: [app, data]
+services:
+  preflight:
+    <<: *api
+    restart: "no"
+    command: [python, /app/scripts/verify_prod_env.py]
+  db:
+    image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+    user: postgres
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Missing POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Missing POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run/postgresql:rw,nosuid,uid=70,gid=70,mode=0770
+    networks: [data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  migrate:
+    <<: *api
+    restart: "no"
+    command: [python, manage.py, migrate, --noinput]
+    depends_on:
+      preflight: {condition: service_completed_successfully}
+      db: {condition: service_healthy}
+  api:
+    <<: *api
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import os,urllib.request; r=urllib.request.Request('http://127.0.0.1:8000/api/v1/health/',headers={'Host':os.environ['DOMAIN'],'X-Forwarded-Proto':'https'}); urllib.request.urlopen(r,timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  web:
+    image: mamas-garden-web:${IMAGE_TAG:-local}
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      target: production
+      args:
+        SITE_URL: https://${DOMAIN:?Missing DOMAIN}
+        API_URL: ${NEXT_PUBLIC_API_URL:-}
+    user: "101:101"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://api:8000
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    networks: [edge, app]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:3000/login]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  proxy:
+    image: mamas-garden-proxy:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    user: "101:101"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    environment:
+      DOMAIN: ${DOMAIN:?Missing DOMAIN}
+    ports: ["80:8080", "443:8443"]
+    volumes:
+      - ./deploy/tls:/etc/nginx/tls:ro
+      - ./deploy/acme:/var/www/acme:ro
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    networks: [edge, app]
+    depends_on:
+      web: {condition: service_healthy}
+  acme-bootstrap:
+    profiles: [bootstrap]
+    image: mamas-garden-proxy:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    user: "101:101"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      DOMAIN: ${DOMAIN:?Missing DOMAIN}
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/bootstrap
+    ports: ["80:8080"]
+    volumes: [./deploy/acme:/var/www/acme:ro]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    networks: [edge]
+volumes:
+  postgres_data:
+  media:
+networks:
+  edge:
+  app:
+    internal: true
+  data:
+    internal: true

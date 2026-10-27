@@ -1,0 +1,16 @@
+# Copiar a .env.production con permisos 0600 y completar desde el gestor de secretos.
+DOMAIN=fincamamasgarden.com
+DJANGO_SETTINGS_MODULE=config.settings.production
+DJANGO_SECRET_KEY=
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=fincamamasgarden.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://fincamamasgarden.com
+NEXT_PUBLIC_SITE_URL=https://fincamamasgarden.com
+API_INTERNAL_URL=http://api:8000
+POSTGRES_DB=finca_mamas_garden
+POSTGRES_USER=finca_app
+POSTGRES_PASSWORD=
+API_PORT=8000
+WEB_PORT=3000
+POSTGRES_PORT=5432
+DATABASE_URL=

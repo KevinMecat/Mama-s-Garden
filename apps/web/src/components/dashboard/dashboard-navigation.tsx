@@ -35,6 +35,7 @@ export function DashboardNavigation({ user }: { user: AuthUser }) {
     setIsClosingSession(true);
     try {
       await logout();
+      window.dispatchEvent(new Event("finca:auth-changed"));
       router.replace("/");
       router.refresh();
     } finally {

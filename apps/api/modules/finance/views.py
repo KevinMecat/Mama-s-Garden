@@ -1,5 +1,7 @@
 from django.db.models.deletion import ProtectedError
+from django.http import FileResponse, Http404
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -90,6 +92,17 @@ class TransactionAttachmentViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     parser_classes = (MultiPartParser, FormParser)
     queryset = TransactionAttachment.objects.none()
+
+    @action(detail=True, methods=["get"])
+    def download(self, request, pk=None):
+        attachment = self.get_object()
+        try:
+            handle = attachment.file.open("rb")
+        except FileNotFoundError:
+            raise Http404 from None
+        response = FileResponse(handle, as_attachment=True, filename=attachment.original_name)
+        response["Cache-Control"] = "private, no-store"
+        return response
 
     def get_queryset(self):
         queryset = TransactionAttachment.objects.select_related(

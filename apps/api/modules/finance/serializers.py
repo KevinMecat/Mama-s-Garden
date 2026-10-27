@@ -1,6 +1,8 @@
 from typing import ClassVar
 
+from django.conf import settings
 from django.db import transaction as database_transaction
+from django.urls import reverse
 from rest_framework import serializers
 
 from modules.accounts.models import User
@@ -48,7 +50,11 @@ class TransactionAttachmentSerializer(serializers.ModelSerializer):
         extra_kwargs: ClassVar[dict] = {"file": {"write_only": True}}
 
     def get_file_url(self, instance) -> str | None:
-        return instance.file.url if instance.file else None
+        if not instance.file:
+            return None
+        if settings.DEBUG:
+            return instance.file.url
+        return reverse("transaction-attachment-download", args=[instance.pk])
 
     def get_uploaded_by_name(self, instance) -> str:
         if not instance.uploaded_by:

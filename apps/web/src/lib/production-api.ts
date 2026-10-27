@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-client";
 import { getCsrfToken } from "@/lib/auth-api";
 import type {
   Product,
@@ -29,7 +30,7 @@ function firstError(value: unknown): string | undefined {
 
 async function request<T>(url: string, method: string, input?: unknown): Promise<T | null> {
   const csrfToken = await getCsrfToken();
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method,
     cache: "no-store",
     credentials: "include",

@@ -15,6 +15,43 @@ TINY_PNG = base64.b64decode(
 )
 
 
+@pytest.mark.django_db
+def test_production_receipts_require_authentication_and_project_membership(
+    finance_setup, tmp_path, settings
+):
+    admin, worker, project, category = finance_setup
+    settings.MEDIA_ROOT = tmp_path
+    settings.DEBUG = False
+    transaction = Transaction.objects.create(
+        project=project,
+        category=category,
+        type=Transaction.Type.EXPENSE,
+        amount="10.00",
+        transaction_date="2026-10-22",
+        description="Comprobante privado",
+        created_by=admin,
+    )
+    attachment = TransactionAttachment.objects.create(
+        transaction=transaction,
+        file=SimpleUploadedFile("receipt.png", TINY_PNG, content_type="image/png"),
+        original_name="receipt.png",
+        uploaded_by=admin,
+    )
+    client = APIClient()
+    url = f"/api/v1/finance/attachments/{attachment.pk}/download/"
+    assert client.get(url).status_code in {401, 403}
+    outsider = User.objects.create_user(email="outsider@example.com", password="test-password")
+    client.force_authenticate(outsider)
+    assert client.get(url).status_code == 404
+    client.force_authenticate(worker)
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response["Cache-Control"] == "private, no-store"
+    assert b"".join(response.streaming_content) == TINY_PNG
+    details = client.get(f"/api/v1/finance/attachments/{attachment.pk}/")
+    assert details.json()["file_url"] == url
+
+
 @pytest.fixture
 def finance_setup():
     admin = User.objects.create_superuser(
@@ -177,7 +214,7 @@ def test_multipart_transaction_creates_optional_receipt(finance_setup, tmp_path,
     attachment = TransactionAttachment.objects.get(transaction=transaction_record)
     assert attachment.original_name == "factura.png"
     assert attachment.file.storage.exists(attachment.file.name)
-    assert response.json()["attachments"][0]["file_url"].startswith("/media/")
+    assert response.json()["attachments"][0]["file_url"].startswith("/api/v1/finance/attachments/")
 
 
 @pytest.mark.django_db
@@ -212,7 +249,7 @@ def test_standalone_attachment_endpoint_accepts_multipart(finance_setup, tmp_pat
     attachment_id = create_response.json()["id"]
     delete_response = client.delete(f"/api/v1/finance/attachments/{attachment_id}/")
 
-    assert create_response.json()["file_url"].startswith("/media/")
+    assert create_response.json()["file_url"].startswith("/api/v1/finance/attachments/")
     assert delete_response.status_code == 204
 
 

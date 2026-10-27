@@ -47,7 +47,7 @@ export function ProjectCard({ project }: { project: Project }) {
           <dd className="mt-1 font-semibold text-brand-primary">{project.member_count} personas</dd>
         </div>
       </dl>
-      <Link href={`/dashboard/projects/${project.id}`} className="mt-5 inline-flex min-h-11 items-center text-sm font-bold text-brand-secondary underline-offset-4 hover:underline">
+      <Link href={`/dashboard/projects/detail?id=${project.id}`} className="mt-5 inline-flex min-h-11 items-center text-sm font-bold text-brand-secondary underline-offset-4 hover:underline">
         Ver métricas y gestionar
       </Link>
     </article>
