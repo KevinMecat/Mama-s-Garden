@@ -22,8 +22,8 @@ export function formatMoney(value: unknown, currency: unknown): string {
     return new Intl.NumberFormat("es-NI", {
       style: "currency",
       currency: code,
-      currencyDisplay: "code",
-    }).format(amount / 100);
+      currencyDisplay: "narrowSymbol",
+    }).format(amount / 100) + ` ${code}`;
   } catch {
     return "Moneda no reconocida";
   }

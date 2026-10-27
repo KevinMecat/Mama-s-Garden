@@ -1,13 +1,13 @@
 import { apiUrl } from "@/lib/api-client";
 import type { FinancialTransaction } from "@/types/finance";
 
-const currencyFormatter = new Intl.NumberFormat("es-GT", {
+const currencyFormatter = new Intl.NumberFormat("es-NI", {
   style: "currency",
-  currency: "GTQ",
+  currency: "USD",
   minimumFractionDigits: 2,
 });
 
-const dateFormatter = new Intl.DateTimeFormat("es-GT", {
+const dateFormatter = new Intl.DateTimeFormat("es-NI", {
   day: "2-digit",
   month: "short",
   year: "numeric",

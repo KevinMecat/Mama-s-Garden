@@ -18,11 +18,11 @@ import {
   CostDistributionChart,
 } from "@/components/reports/dashboard-charts";
 import { getDashboardReport, requireUser } from "@/lib/page-api";
-const money = new Intl.NumberFormat("es-GT", {
+const money = new Intl.NumberFormat("es-NI", {
   style: "currency",
-  currency: "GTQ",
+  currency: "USD",
 });
-const monthName = new Intl.DateTimeFormat("es-GT", {
+const monthName = new Intl.DateTimeFormat("es-NI", {
   month: "long",
   year: "numeric",
 });

@@ -12,7 +12,7 @@ const typeAccent: Record<Project["type"], string> = {
 
 function formatDate(value: string | null) {
   if (!value) return "Sin definir";
-  return new Intl.DateTimeFormat("es-GT", {
+  return new Intl.DateTimeFormat("es-NI", {
     day: "2-digit",
     month: "short",
     year: "numeric",

@@ -3,7 +3,7 @@ import { ClientPage, type ClientPageProps } from "@/components/client-page";
 import Link from "next/link";
 import { ProjectDeleteButton } from "@/components/projects/project-delete-button";
 import { getProject, getProjectMetrics, requireUser } from "@/lib/page-api";
-const money = new Intl.NumberFormat("es-GT", { style: "currency", currency: "GTQ" });
+const money = new Intl.NumberFormat("es-NI", { style: "currency", currency: "USD" });
 
 async function loadPage({ params }: ClientPageProps) {
   const user = await requireUser(); const { id } = await params; const [project, metrics] = await Promise.all([getProject(id), getProjectMetrics(id)]);

@@ -18,7 +18,7 @@ interface EmployeeFormProps {
   today: string;
 }
 
-const money = new Intl.NumberFormat("es-GT", { style: "currency", currency: "GTQ" });
+const money = new Intl.NumberFormat("es-NI", { style: "currency", currency: "USD" });
 
 export function EmployeeForm({ employee, rates = [], today }: EmployeeFormProps) {
   const router = useRouter();
@@ -84,7 +84,7 @@ export function EmployeeForm({ employee, rates = [], today }: EmployeeFormProps)
       <legend className="px-2 font-sans text-xl font-semibold text-brand-ink">{employee ? "Nueva tarifa salarial" : "Tarifa salarial inicial"}</legend>
       {employee ? <p className="mt-1 text-sm text-brand-muted">Déjalo vacío si no cambiarás el salario. Una tarifa nueva cerrará automáticamente la vigencia anterior.</p> : null}
       <div className="mt-4 grid gap-5 sm:grid-cols-2">
-        <div><label htmlFor="new_daily_rate" className={labelClass}>Salario diario (GTQ)</label><input id="new_daily_rate" name="new_daily_rate" type="number" inputMode="decimal" min="0.01" step="0.01" required={!employee} value={newRate} onChange={event => setNewRate(event.target.value)} className={inputClass} /></div>
+        <div><label htmlFor="new_daily_rate" className={labelClass}>Salario diario (USD)</label><input id="new_daily_rate" name="new_daily_rate" type="number" inputMode="decimal" min="0.01" step="0.01" required={!employee} value={newRate} onChange={event => setNewRate(event.target.value)} className={inputClass} /></div>
         <div><label htmlFor="rate_valid_from" className={labelClass}>Vigente desde</label><input id="rate_valid_from" name="rate_valid_from" type="date" required={!employee || Boolean(newRate)} value={rateDate} onChange={event => setRateDate(event.target.value)} className={inputClass} /></div>
       </div>
     </fieldset>

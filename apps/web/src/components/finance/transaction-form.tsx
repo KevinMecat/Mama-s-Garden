@@ -80,7 +80,7 @@ export function TransactionForm({ projects, categories, role, today }: Transacti
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label htmlFor="amount" className={labelClass}>Monto (GTQ)</label>
+          <label htmlFor="amount" className={labelClass}>Monto (USD)</label>
           <input id="amount" name="amount" type="number" inputMode="decimal" min="0.01" step="0.01" required placeholder="0.00" className={inputClass} />
         </div>
         <div>

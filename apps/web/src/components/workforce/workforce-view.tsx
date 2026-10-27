@@ -830,7 +830,7 @@ function TaskDialog({
               ))}
               <p>
                 {record.review
-                  ? `${record.review.accepted ? "Aceptado" : "Devuelto"}: ${record.review.observations} · ${new Date(record.review.created_at).toLocaleString("es-GT")} · revisor ${record.review.reviewed_by_name ?? record.review.reviewed_by}`
+                  ? `${record.review.accepted ? "Aceptado" : "Devuelto"}: ${record.review.observations} · ${new Date(record.review.created_at).toLocaleString("es-NI")} · revisor ${record.review.reviewed_by_name ?? record.review.reviewed_by}`
                   : "Revisión pendiente"}
               </p>
             </article>
@@ -843,7 +843,7 @@ function TaskDialog({
               {task.events.map((item, i) => (
                 <li key={i} className="break-words">
                   {item.action} ·{" "}
-                  {new Date(item.created_at).toLocaleString("es-GT")} · usuario{" "}
+                  {new Date(item.created_at).toLocaleString("es-NI")} · usuario{" "}
                   {item.actor_name ?? item.actor}
                   {item.detail.reason ? ` · ${String(item.detail.reason)}` : ""}
                 </li>

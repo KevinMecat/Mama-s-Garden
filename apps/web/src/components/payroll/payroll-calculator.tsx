@@ -7,7 +7,7 @@ import { createPayrollPeriod, payPayrollPeriod, PayrollApiError } from "@/lib/pa
 import type { FinancialCategory } from "@/types/finance";
 import type { PayrollPeriod } from "@/types/payroll";
 
-const money = new Intl.NumberFormat("es-GT", { style: "currency", currency: "GTQ" });
+const money = new Intl.NumberFormat("es-NI", { style: "currency", currency: "USD" });
 
 export function PayrollCalculator({ categories, initialPeriods, today }: { categories: FinancialCategory[]; initialPeriods: PayrollPeriod[]; today: string }) {
   const [periods, setPeriods] = useState(initialPeriods);

@@ -16,12 +16,12 @@ import {
 
 import type { DashboardReport } from "@/types/reports";
 
-const money = new Intl.NumberFormat("es-GT", {
+const money = new Intl.NumberFormat("es-NI", {
   style: "currency",
-  currency: "GTQ",
+  currency: "USD",
   maximumFractionDigits: 2,
 });
-const compactMoney = new Intl.NumberFormat("es-GT", {
+const compactMoney = new Intl.NumberFormat("es-NI", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
@@ -62,7 +62,7 @@ export function CashFlowChart({ data }: { data: CashFlowRow[] }) {
           <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 4" vertical={false} />
           <XAxis dataKey="label" tick={{ fill: "#64748b", fontSize: 12 }} tickLine={false} axisLine={false} />
           <YAxis
-            tickFormatter={(value) => `Q${compactMoney.format(Number(value))}`}
+            tickFormatter={(value) => `$${compactMoney.format(Number(value))}`}
             tick={{ fill: "#64748b", fontSize: 12 }}
             tickLine={false}
             axisLine={false}

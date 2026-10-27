@@ -2,7 +2,7 @@
 import { ClientPage } from "@/components/client-page";
 import Link from "next/link";
 import { getEmployees, requireAdministrator } from "@/lib/page-api";
-const money = new Intl.NumberFormat("es-GT", { style: "currency", currency: "GTQ" });
+const money = new Intl.NumberFormat("es-NI", { style: "currency", currency: "USD" });
 
 async function loadPage() {
   await requireAdministrator();
