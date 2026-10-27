@@ -1,7 +1,7 @@
 name: pr-lint
 on:
   pull_request:
-    branches: [main]
+    branches: [main, chore/environment-setup]
     types: [opened, edited, synchronize, reopened, ready_for_review]
 permissions:
   contents: read
@@ -23,8 +23,8 @@ jobs:
         run: |
           python - <<'PY'
           import os, re, subprocess
-          subject = re.compile(r'(feat|fix|refactor|docs|chore|style|test|perf)\((root|ui|api|auth|db|docker|config)\): \S.*')
-          branch = re.compile(r'(feat|fix|chore)/[a-z0-9]+(?:-[a-z0-9]+)*')
+          subject = re.compile(r'(feat|fix|refactor|docs|chore|style|test|perf)\((root|ui|api|auth|db|docker|config|workforce)\): \S.*')
+          branch = re.compile(r'(feat|feature|fix|chore)/[a-z0-9]+(?:-[a-z0-9]+)*')
           def validate(value):
               if not subject.fullmatch(value) or value != value.lower():
                   raise SystemExit('Título o commit inválido: consultar CONTRIBUTING.md.')

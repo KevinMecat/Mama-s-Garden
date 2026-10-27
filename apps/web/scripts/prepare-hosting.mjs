@@ -1,10 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 // Run from apps/web after an audited build. Only out/ is deployable.
 const root = path.resolve("../..");
 const out = path.resolve("out");
+const provenance = JSON.parse(fs.readFileSync(path.join(out, "build-info.json"), "utf8"));
+const sourceMatches = provenance.source === "build-context"
+  ? process.env.BUILD_SOURCE_CLEAN === "1" && provenance.sha === process.env.BUILD_SOURCE_SHA
+  : !execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() && provenance.sha === execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+if (provenance.dirty || provenance.dataSource === "demo" || !sourceMatches) throw new Error("Only an unchanged clean production build can be published.");
 const hashes = new Set();
 let pages = 0;
 function visit(dir) {
@@ -14,6 +20,7 @@ function visit(dir) {
     if (entry.isDirectory()) { visit(file); continue; }
     if (entry.name.endsWith(".map")) { fs.unlinkSync(file); continue; }
     if (/^\.env|\.(pem|key|db|sqlite3)$|package-lock\.json/.test(entry.name)) throw new Error("Forbidden public artifact");
+    if (/\.(js|html)$/.test(entry.name) && /demo@mamasgarden\.com|demo1234|finca\.demo\.v1|Modo Demostración|demo-workforce-browser/.test(fs.readFileSync(file, "utf8"))) throw new Error("Synthetic fixture or mock UI in public export");
     if (file.endsWith(".html")) {
       pages++;
       const html = fs.readFileSync(file, "utf8");
@@ -30,10 +37,13 @@ if (api) {
   const url = new URL(api);
   if (url.protocol !== "https:" || url.origin !== api) throw new Error("NEXT_PUBLIC_API_URL must be an HTTPS origin");
 }
+const firebase = (process.env.NEXT_PUBLIC_DATA_SOURCE ?? (api ? "django" : "firebase")) === "firebase";
+const cloudConnections = firebase ? " https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com" : "";
+const cloudImages = firebase ? " https://firebasestorage.googleapis.com https://storage.googleapis.com" : "";
 const csp = [
   "default-src 'self'", `script-src 'self' ${[...hashes].join(" ")}`,
-  "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https://images.unsplash.com" + (api ? ` ${api}` : ""),
-  "font-src 'self'", `connect-src 'self'${api ? ` ${api}` : ""}`,
+  "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https://images.unsplash.com" + cloudImages + (api ? ` ${api}` : ""),
+  "font-src 'self'", `connect-src 'self'${cloudConnections}${api ? ` ${api}` : ""}`,
   "object-src 'none'", "base-uri 'self'", "frame-ancestors 'none'", "form-action 'self'", "upgrade-insecure-requests",
 ].join("; ");
 const configPath = path.join(root, "firebase.json");
@@ -48,6 +58,7 @@ config.hosting.headers = [
     { key: "Content-Security-Policy", value: csp },
   ] },
   { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
+  { source: "/build-info.json", headers: [{ key: "Cache-Control", value: "no-store" }] },
   { source: "/_next/static/**", headers: [{ key: "Cache-Control", value: "public,max-age=31536000,immutable" }] },
 ];
 if (fs.existsSync(configPath)) fs.writeFileSync(path.join(root, "firebase.deploy.json"), JSON.stringify(config, null, 2) + "\n");

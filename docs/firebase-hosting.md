@@ -4,27 +4,15 @@ Proyecto y sitio: `surco-finca`. Dominio: <https://fincamamasgarden.com>.
 El frontend completo se exporta desde Next.js a `apps/web/out`; Firebase no
 ejecuta Node, Django, Server Actions ni código de servidor de Next.js.
 
-## Configuración de la API
+## Origen operativo de producción
 
-`config/frontend.example` contiene exclusivamente parámetros públicos de build.
-`NEXT_PUBLIC_API_URL` debe ser el **origen HTTPS** de Django, sin `/api`, ruta,
-credenciales, query ni fragmento; por ejemplo `https://api.fincamamasgarden.com`
-cuando ese servidor exista. El valor vacío actual es deliberado: bloquea todas
-las llamadas a la API y deshabilita el envío del login. No se envían contraseñas
-a una URL temporal. Nunca poner claves o tokens en variables `NEXT_PUBLIC_*`.
+El despliegue actual utiliza `NEXT_PUBLIC_DATA_SOURCE=firebase` y consulta exclusivamente Firestore/Storage de `surco-finca`, con Firebase Authentication y el perfil activo de `users/{uid}`. La configuración web pública se obtiene desde `/__/firebase/init.json`; no se empaquetan credenciales administrativas ni registros operativos en el export.
 
-En GitHub: Settings → Secrets and variables → Actions → Variables → New
-repository variable → `NEXT_PUBLIC_API_URL`. Después, ejecutar el workflow
-`firebase-hosting` sobre `main` o publicar un cambio en esa rama. Cambiar una
-variable sin recompilar no modifica el JavaScript ya desplegado.
+El conector es de **solo lectura**. Usa `getDocFromServer`/`getDocsFromServer`, caché en memoria y sesión de Auth por pestaña; no persiste colecciones en localStorage. Los archivos se resuelven mediante Storage autenticado y las reglas existentes. No contiene API de escritura de documentos, subida o borrado de archivos. Las reglas y los permisos de datos no se amplían. Los dominios de Hosting fueron añadidos a los dominios autorizados de Auth, conservando los existentes.
 
-Django de producción incluye CORS con credenciales y CSRF para los orígenes
-exactos del dominio, `www` y los dos dominios predeterminados del sitio Firebase.
-Las cookies son Secure y SameSite=None; la autorización sigue siendo obligatoria
-en cada endpoint de Django. Preferir `api.fincamamasgarden.com`: navegadores que
-bloquean cookies de terceros pueden impedir sesiones desde `surco-finca.web.app`.
-Los archivos adjuntos privados se descargan desde Django con su cookie de sesión.
-La integración real de login, permisos y datos se verificará cuando exista la API.
+Los salarios se muestran con el importe en centavos, la moneda y periodicidad originales (`weekly` = semanal). USD y NIO se agregan por separado; no se hacen conversiones ni se infieren planillas aprobadas. Los módulos sin una colección de origen muestran su ausencia, sin fixtures. Las credenciales públicas demo no conceden acceso a los datos reales.
+
+Para usar Django explícitamente: `NEXT_PUBLIC_DATA_SOURCE=django` y `NEXT_PUBLIC_API_URL` con su origen HTTPS, sin ruta ni credenciales. La demostración sintética requiere `NEXT_PUBLIC_DATA_SOURCE=demo`. Sin origen de Django y sin selector explícito, el destino predeterminado es Firebase. Todo cambio de estos parámetros requiere recompilar y desplegar.
 
 ## Publicación local (PowerShell, desde la raíz)
 

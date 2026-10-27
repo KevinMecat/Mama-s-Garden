@@ -2,13 +2,13 @@
 
 <!-- Título: tipo(scope): descripción concisa en minúsculas -->
 - Tipo: <!-- feat | fix | refactor | docs | chore | style | test | perf -->
-- Scope: <!-- root | ui | api | auth | db | docker | config -->
+- Scope: <!-- root | ui | api | auth | db | docker | config | workforce -->
 - Problema y comportamiento resultante:
 - Riesgos, migraciones y rollback:
 
 ## Validación y seguridad
 
-- [ ] Rama `feat/`, `fix/` o `chore/` con tarea kebab-case; título y commits válidos.
+- [ ] Rama `feat/`, `feature/`, `fix/` o `chore/` con tarea kebab-case; título y commits válidos.
 - [ ] Sin `.env`, credenciales, claves privadas, datos personales ni dumps.
 - [ ] Pruebas locales, Ruff, lint, tipos y build correctos; adjunto evidencia.
 - [ ] Gitleaks revisó el historial completo y archivos comprimidos.

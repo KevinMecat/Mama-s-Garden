@@ -68,6 +68,8 @@ services:
       args:
         SITE_URL: https://${DOMAIN:?Missing DOMAIN}
         API_URL: ${NEXT_PUBLIC_API_URL:-}
+        SOURCE_REVISION: ${SOURCE_REVISION:?Set SOURCE_REVISION to the verified git commit}
+        SOURCE_TREE_CLEAN: ${SOURCE_TREE_CLEAN:-0}
     user: "101:101"
     restart: unless-stopped
     read_only: true

@@ -97,3 +97,8 @@ Thumbs.db
 firebase.deploy.json
 apps/web/hosting-csp.conf
 gha-creds-*.json
+
+# Isolated browser QA output
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/public/build-info.json

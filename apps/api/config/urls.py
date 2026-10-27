@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/v1/finance/", include("modules.finance.urls")),
     path("api/v1/production/", include("modules.production.urls")),
     path("api/v1/payroll/", include("modules.payroll.urls")),
+    path("api/v1/workforce/", include("modules.workforce.urls")),
     path("api/v1/reports/", include("modules.reports.urls")),
 ]
 

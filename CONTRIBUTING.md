@@ -20,7 +20,7 @@ con alcance obligatorio y descripción concisa en minúsculas:
 | test | Pruebas | `test(db): verificar transacciones de ventas` |
 | perf | Rendimiento | `perf(api): reducir consultas de proyectos` |
 
-Lista fija de alcances válidos: `root`, `ui`, `api`, `auth`, `db`, `docker`, `config`.
+Lista fija de alcances válidos: `root`, `ui`, `api`, `auth`, `db`, `docker`, `config`, `workforce`.
 Modificarla requiere actualizar esta guía y el validador en el mismo PR.
 Cuerpo opcional separado por línea vacía. Para cambios incompatibles, usar el pie
 `BREAKING CHANGE: ...`, conservando la cabecera estricta.
@@ -29,7 +29,7 @@ Primer commit: `chore(root): initialize project structure and setup`.
 ## Ramas
 
 Aplicamos [Conventional Branch 1.1.0](https://conventionalbranch.org/) con el perfil
-estricto `<tipo>/<nombre-tarea-kebab-case>`. Tipos permitidos: `feat`, `fix`, `chore`.
+estricto `<tipo>/<nombre-tarea-kebab-case>`. Tipos permitidos: `feat`, `feature`, `fix`, `chore`. `feature` se admite para módulos funcionales, como `feature/personal-kanban`.
 Documentación, pruebas y refactorización usan ramas `chore/` y su tipo de commit
 correspondiente. `main` es la única excepción al prefijo.
 Solo letras ASCII minúsculas, números y guiones simples. Prohibidos espacios,

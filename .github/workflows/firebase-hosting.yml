@@ -1,7 +1,7 @@
 name: firebase-hosting
 on:
   pull_request:
-    branches: [main]
+    branches: [main, chore/environment-setup]
   push:
     branches: [main]
   workflow_dispatch:
@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
+      NEXT_PUBLIC_DATA_SOURCE: firebase
       NEXT_PUBLIC_SITE_URL: https://fincamamasgarden.com
       NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
       BUILD_AUDIT_MAPS: '1'

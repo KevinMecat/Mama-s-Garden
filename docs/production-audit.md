@@ -319,3 +319,199 @@ humana ni se certifica un backend inexistente.
 
 **Firma de ejecución técnica:** Codex, 26 de octubre de 2026; preparación y publicación
 frontend realizadas. Procedimiento reproducible: [firebase-hosting.md](firebase-hosting.md).
+
+
+## Módulo de trabajo del personal — 27 de octubre de 2026
+
+Desarrollado en feature/personal-kanban sobre ab045fa; PR #2 dependiente de #1.
+No integrado ni desplegado mientras falten las revisiones exigidas por main.
+El usuario confirmó Django/PostgreSQL como fuente de verdad y ausencia de datos
+operativos en línea; Firestore/Storage preliminares no se modificaron ni importaron.
+
+Migraciones workforce/0001_initial y 0002_worklog_work_date exclusivamente aditivas. Empleados, proyectos,
+asistencia, tarifas, planillas, importes y comprobantes existentes permanecen
+fuera de las escrituras del módulo. Prueba de conservación con fixtures y hash
+de archivo correcta; suite local 51 correctas y 2 de concurrencia omitidas en
+SQLite; CI PostgreSQL final en 9668fcc con 55 correctas, incluidas ambas de concurrencia
+y las pruebas de fecha real distinta de la planificación.
+E2E local automatizado: tres escenarios correctos de jornada completa, escritorio,
+móvil, teclado, arrastre, rechazo de revisión obsoleta, reintento y permisos.
+
+No se verificó respaldo/restauración de una base operativa real: no existe un
+destino operativo en línea confirmado y no se accedió al PostgreSQL local detenido.
+No se presenta la prueba de fixtures como evidencia de restauración real.
+Antes de cualquier cambio sobre datos locales previos se exige identificar el
+volumen/base/media, respaldo privado y restauración aislada.
+
+La publicación conservada es Firebase Hosting version c2844b9a87a7554d, release
+1793074077668000; SHA de implementación conocido ab045fa. El módulo nuevo no está
+publicado. Matriz de permisos, límites y runbook: [workforce.md](workforce.md).
+
+Evidencia final de código 9668fcc: quality 40541898308 y production 40541898522
+correctos; E2E Chromium remoto 3 correctas. Build de Hosting y PR lint correctos.
+El stack sintético arrancó, migró y verificó TLS/cabeceras/media privada sin usar
+una base operativa. Los respaldos y la restauración real permanecen sin verificar;
+no se requerían para modificar exclusivamente fixtures aisladas.
+
+
+## Anexo: demostración pública del cliente (2026-10-27)
+
+Por solicitud explícita se habilita un modo demo cuando el origen público de API está vacío. Esto sustituye el bloqueo del login descrito en los anexos anteriores. Las credenciales son públicas y el estado ficticio se limita a localStorage del navegador (`finca.demo.v1`); no constituye autenticación productiva ni autoriza acceso a Django/PostgreSQL. No se accede ni modifica una base operativa o archivos adjuntos privados.
+
+La API configurada conserva cookies de sesión y CSRF; cualquier indisponibilidad genera error, sin conmutación automática a datos ficticios. El retorno a operación real exige configurar el origen HTTPS en el build y volver a desplegar. Los ejemplos no se importan a PostgreSQL. No se certifican respaldos ni un backend operativo. Detalles y verificaciones reproducibles: [demo-mode.md](demo-mode.md).
+
+Verificación ejecutada el 2026-10-27: tests del cliente, ESLint y build estático con TypeScript correctos; tres pruebas E2E contra Django temporal correctas. La auditoría del build inspeccionó 328 mapas y dos trazas sin dependencias de desarrollo en el artefacto; los mapas fueron eliminados antes de publicar. Gitleaks staged sin hallazgos. Firebase CLI confirmó la publicación de 224 archivos en `surco-finca`.
+
+Validación en vivo en `https://fincamamasgarden.com`: login, 27 rutas protegidas, creación y persistencia local de proyecto, reinicio aislado, móvil y logout correctos; cero llamadas API y cero errores de ejecución/CSP. HTTPS, HSTS, DENY, nosniff, Referrer-Policy y CSP con hashes verificados. Esta publicación es una demostración pública; no certifica la operación de un ERP con datos reales.
+
+
+## Anexo: publicación del rediseño con datos operativos Firebase (2026-10-27)
+
+La instrucción más reciente del propietario sustituye la clasificación anterior de Firestore como preliminar: el origen operativo de este despliegue es `surco-finca`, no los fixtures de Django ni la sesión demo. La inspección autenticada de solo lectura identificó siete perfiles, siete historiales salariales semanales USD, 216 asistencias, 62 movimientos, una unidad y 26 archivos. No se incorporan nombres, importes individuales, fotos ni enlaces con tokens a los archivos versionados o al export estático.
+
+El conector exige Firebase Authentication y un perfil activo autorizado. Lee los documentos desde el servidor con las reglas vigentes, mantiene las colecciones en memoria y resuelve los archivos mediante Storage autenticado. No incluye métodos de escritura, eliminación o carga. Las rutas y controles de edición del proveedor Django no se montan cuando el origen es Firebase. Los salarios conservan centavos, moneda y periodicidad; las monedas se contabilizan separadas, sin conversión ni inferencia de pagos.
+
+Se comprobó que la cuenta administrativa existente coincide con su perfil activo. No se creó una cuenta, se cambió una contraseña ni se concedieron nuevos roles. Se añadieron únicamente los dominios verificados de Hosting a la configuración de dominios autorizados de Auth. Las reglas de Firestore/Storage y sus registros permanecen bajo la política existente; el servicio de Storage ya dispone del permiso requerido para consultar perfiles desde sus reglas.
+
+SDK Firebase fijado y dependencia transitiva `@grpc/grpc-js` actualizada mediante override a la versión corregida 1.14.6; auditoría completa y de producción sin vulnerabilidades. Pruebas de centavos, monedas separadas, fechas efectivas, periodicidad y ausencia de API de escritura correctas. Prueba de navegador: rutas privadas protegidas, login de Firebase real, credenciales demo rechazadas y consulta anónima de personal denegada; sin escrituras ni errores de ejecución/CSP. No se afirma una prueba positiva con la contraseña del propietario, que no fue solicitada ni modificada.
+
+
+Publicación completada: Firebase CLI confirmó `Deploy complete!` para 233 archivos. `https://fincamamasgarden.com/login` y `https://surco-finca.web.app/login` responden 200 con HSTS y CSP que permite exclusivamente los servicios Firebase necesarios. La prueba de navegador en el dominio público confirmó proveedor Auth real, rechazo de credenciales demo, protección de rutas, denegación anónima de personal y ausencia de errores de ejecución/CSP. La comparación de nombres y tiempos de actualización de todos los documentos inspeccionados y de generaciones/metageneraciones de los 26 objetos antes/después resultó idéntica. No se sobrescribió ni eliminó ningún registro o archivo. El export no contiene los perfiles operativos; se consultan tras autenticar.
+
+## Anexo vigente: Kanban operativo y conservación — 0.2.0
+
+Este anexo sustituye las afirmaciones históricas de demo pública, Firebase preliminar,
+solo lectura del módulo de trabajo y falta de respaldo Firebase. No certifica ni
+modifica el PostgreSQL local. La rama de partida fue `feature/personal-kanban`,
+HEAD `089fa79d2fa45cfcef3f7b7aa32d167ac6a546d1`, sin cambios locales útiles pendientes.
+PR #2 continúa dependiendo de PR #1, sin reescribir historia ni eludir main.
+
+La publicación previa identificable era Hosting release `1793127148314000`,
+version `15e48bf63c96c0cd`, 2026-10-27 18:52:28 UTC. No llevaba metadatos Git:
+`089fa79` es la última implementación conocida, no una atribución criptográfica
+retrospectiva. A partir de 0.2.0 `/build-info.json` informa el SHA exacto compilado,
+SemVer, fecha, proveedor y si el árbol estaba limpio.
+
+### Protección verificada
+
+Respaldo privado de 795 documentos y 26 objetos, con ACL restringida y manifiesto
+SHA-256 fuera del repositorio. Restauración independiente: 795 documentos en
+Firestore emulado loopback, coincidencia completa de campos; 26 archivos en otro
+directorio privado, hashes idénticos. El acta detallada permanece privada.
+No se presenta una copia de archivos como un ensayo de carga al bucket productivo.
+No hubo semillas, migraciones, reinicios de volúmenes o escrituras de prueba reales.
+
+El adaptador escribe exclusivamente recursos nuevos `workforce_*` y evidencias
+nuevas. Las revisiones de perfil conservan el documento original. Las unidades y
+los trabajadores usan sus IDs existentes; seis activos de siete registros. Las
+tarifas continúan semanales en USD, sin convertirlas a horas/días ni producir pagos.
+
+### Mitigación y riesgos aceptados
+
+| Riesgo | Mitigación y límite |
+| --- | --- |
+| Finalización o revisión sin privilegios | Reglas de Firestore comprueban perfil activo, estados, revisión, cierre y aceptación exclusivamente administrativa |
+| Reintentos, concurrencia y pérdida de red | Transacción, revisión incremental, evento inmutable ligado, UUID/huella idempotente y confirmación del servidor antes de mover la tarjeta |
+| Sobrescritura de datos previos | Solo parches operativos separados; evidencia nueva exige objeto inexistente; documentos, archivos e historial no se borran por el módulo |
+| Asignaciones inválidas | IDs reales, personal activo comprobado en servidor, índice de inactivos revisados, avisos de ausencia y sobrecarga |
+| Medición injusta | Tiempo explícito, incluye cierres devueltos, producción de cuadrilla grupal, cumplimiento sin rankings, cero y pendiente diferenciados |
+| Exposición de salarios/finanzas | Consultas y reglas exclusivamente Admin, también para comprobantes; Encargado no obtiene datos financieros |
+| Dependencias de desarrollo | Herramientas de reglas solo en devDependencies; auditoría npm completa y productiva sin alertas; mapas/trazas del build deben demostrar exclusión antes de publicar |
+| Enlaces heredados de Storage con token | Se preservan los tokens existentes por la prohibición de modificar objetos. Un poseedor de una URL puede compartirla; no se publican en Git, logs o HTML estático. No se afirma revocación automática al cerrar sesión |
+| Desconexión en campo | La operación requiere red para confirmar escritura. No se promete captura offline persistente ni se almacena personal en localStorage |
+| Identidades de trabajadores | Vínculo explícito con cuentas existentes; no se inventan usuarios ni contraseñas. La creación de cuentas adicionales sigue bajo administración autorizada |
+| Recuperación y escala | Respaldo local privado verificado en esta entrega; no equivale a política periódica, retención externa o restauración productiva. No se certificó carga masiva ni alta concurrencia |
+
+### Matriz HTTP para la publicación
+
+| Control | Valor requerido |
+| --- | --- |
+| HTTPS | Certificado válido para el dominio público; HTTP redirige a HTTPS |
+| HSTS | `max-age=31536000; includeSubDomains; preload` |
+| Framing | `X-Frame-Options: DENY` y CSP `frame-ancestors 'none'` |
+| MIME | `X-Content-Type-Options: nosniff` |
+| Referencia | `Referrer-Policy: strict-origin-when-cross-origin` |
+| CSP | Scripts propios y hashes; conexiones a Auth/Firestore/Storage; sin unsafe-eval ni credenciales de servidor |
+| Export | Solo estático, sin mapas públicos, fixtures, documentos operativos, respaldos o archivos secretos |
+| Proveniencia | `/build-info.json`, no-store, SHA del commit limpio publicado |
+
+### Aprobación
+
+- [x] Respaldo privado y restauración aislada verificados.
+- [x] No se modificó PostgreSQL ni los registros operativos originales.
+- [x] Jornada completa, correcciones, seis integrantes, permisos y conservación probados en emuladores.
+- [x] Flujo positivo de navegador aislado, USD, modo oscuro, móvil e historial comprobados.
+- [ ] Aceptación operacional del propietario con su cuenta y contraseña existentes.
+- [ ] Política de respaldo periódico, copia fuera del equipo y retención aprobadas por el propietario.
+
+Firma de ejecución técnica: Codex, 27 de octubre de 2026. No constituye firma
+humana ni certificación de aceptación del propietario. Resultado de publicación
+y verificaciones en vivo se registran al cierre de esta entrega.
+
+Primera publicación operativa 0.2.0 verificada a las 19:58 UTC: CLI confirmó
+`Deploy complete!`, 249 archivos, release `1793131088281000`, versión Hosting
+`a81a6a06a850813c`, compilada desde el commit limpio
+`96a9271139874573ad564832a131e8fc92e43b13`. El dominio público y `surco-finca.web.app`
+devolvieron ese SHA y el mismo HTML que el export local. HTTP redirigió con 301;
+HSTS fue de al menos un año, includeSubDomains/preload, junto con DENY, nosniff,
+Referrer-Policy y CSP correctos. El dominio firebase por defecto aplica su propio
+max-age HSTS 31556926, superior al mínimo 31536000 configurado.
+
+La prueba de navegador en vivo confirmó Auth real, rechazo de credenciales demo,
+protección de rutas, denegación anónima y ausencia de errores de ejecución/CSP.
+Las fuentes de ambas reglas publicadas coinciden con las versionadas. El export
+no contiene mapas, perfiles reales, fixtures ni marcadores de emuladores.
+La huella posterior de todos los documentos originales y generaciones/metadatos
+de los 26 objetos es idéntica a la anterior; la cuenta administrativa sigue activa.
+No se hizo una prueba positiva con la contraseña del propietario.
+
+Los ajustes posteriores de metadatos Docker no cambian datos ni el dominio
+operativo. El SHA servido de la última compilación se consulta siempre en
+`/build-info.json`; no se interpreta el HEAD de un commit documental como prueba
+de la versión desplegada. CI valida también el build Docker sin copiar `.git`.
+
+## Asistencia operativa — 0.3.0
+
+Se sustituye la consulta de asistencia por registro diario de presencia, entrada,
+salida, descanso, turno nocturno, justificación y observaciones; se añaden resumen
+semanal, CSV y revisiones auditadas. Se mantiene el origen real del personal.
+Las marcaciones nuevas y las correcciones se guardan en `workforce_attendance`
+y `workforce_attendance_history`, sin sobrescribir los 216 registros originales.
+La lectura consolidada se comparte con los avisos de asignación del Kanban.
+
+Reglas: Administrador/Encargado registran; trabajador consulta su vínculo. Fechas
+futuras en Nicaragua e inactivos se rechazan. La semana se deriva y valida en el
+servidor para impedir eludir una planilla cerrada mediante otra clave semanal.
+Se exige revisión incremental e historial inmutable ligado. No se generan pagos,
+no se cambian salarios, tarifas o planillas, ni se calculan horas desde el Kanban.
+
+Pruebas aisladas correctas: entrada/salida, descuento de descanso, turno nocturno,
+horas inválidas, permisos, idempotencia, conflictos, cierre de planilla, revisiones,
+conservación de asistencia original, móvil y descarga CSV. El respaldo privado
+anterior sigue coincidiendo con todos los documentos originales actuales y
+conserva su acta de restauración verificada. No se registraron asistencias de prueba
+con trabajadores reales en producción. Versión/SHA publicados: `/build-info.json`.
+
+## Asistencia: fotos y modos de registro — 0.3.1
+
+Las tarjetas de asistencia muestran las fotos existentes de cada trabajador usando
+lectura autenticada de Storage y un marcador alternativo cuando no hay foto. No
+se crean ni reemplazan objetos. El selector Automático registra la hora actual
+de Nicaragua al tocar entrada o salida y bloquea marcaciones ya registradas.
+Manual presenta ambos campos directamente en la tarjeta, permite guardar primero
+la entrada y completar la salida después, y soporta salida al día siguiente.
+Descansos, estado y notas se conservan; las correcciones detalladas y el historial
+siguen disponibles. Se mantienen permisos, períodos cerrados y validación horaria.
+
+Prueba de navegador en emuladores aislados: fotografía sintética de Storage,
+entrada automática a las 07:15, salida a las 16:45, edición manual 08:00–17:00,
+CSV, historial y vista móvil. No se introducen marcaciones de prueba en producción.
+
+## Movimientos financieros y comprobantes — 0.3.2
+
+El espacio financiero de Firebase incluye un formulario operativo para
+administradores: permite registrar ingresos, gastos e inversiones con moneda,
+fecha, categoría, unidad, descripción y fotografía del comprobante. La foto se
+sube únicamente a la ruta privada del movimiento y el documento guarda su
+referencia; las reglas mantienen el acceso financiero restringido y no permiten
+sobrescribir comprobantes existentes de otros movimientos.

@@ -55,8 +55,8 @@ export function TransactionForm({ projects, categories, role, today }: Transacti
     }
   }
 
-  const inputClass = "mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-primary outline-none transition placeholder:text-brand-muted/60 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/25";
-  const labelClass = "text-sm font-semibold text-brand-primary";
+  const inputClass = "mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-ink outline-none transition placeholder:text-brand-muted/60 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/25";
+  const labelClass = "text-sm font-semibold text-brand-ink";
   const canSubmit = projects.length > 0 && categories.length > 0;
 
   return (
@@ -80,7 +80,7 @@ export function TransactionForm({ projects, categories, role, today }: Transacti
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label htmlFor="amount" className={labelClass}>Monto (GTQ)</label>
+          <label htmlFor="amount" className={labelClass}>Monto (USD)</label>
           <input id="amount" name="amount" type="number" inputMode="decimal" min="0.01" step="0.01" required placeholder="0.00" className={inputClass} />
         </div>
         <div>
@@ -107,7 +107,7 @@ export function TransactionForm({ projects, categories, role, today }: Transacti
           </div>
         ) : (
           <div className="rounded-xl border border-brand-border bg-brand-cream/45 px-4 py-3 text-sm leading-6 text-brand-muted sm:self-end">
-            El movimiento se guardará como <strong className="text-brand-primary">Borrador</strong> hasta que un administrador lo contabilice.
+            El movimiento se guardará como <strong className="text-brand-ink">Borrador</strong> hasta que un administrador lo contabilice.
             <input type="hidden" name="status" value="DRAFT" />
           </div>
         )}
@@ -133,9 +133,9 @@ export function TransactionForm({ projects, categories, role, today }: Transacti
           accept="image/jpeg,image/png,image/webp"
           capture="environment"
           onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
-          className="mt-4 block w-full text-sm text-brand-muted file:mr-4 file:min-h-11 file:rounded-xl file:border-0 file:bg-brand-primary file:px-4 file:font-bold file:text-white hover:file:bg-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+          className="mt-4 block w-full text-sm text-brand-muted file:mr-4 file:min-h-11 file:rounded-xl file:border-0 file:bg-brand-primary file:px-4 file:font-semibold file:text-white hover:file:bg-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
         />
-        {fileName ? <p className="mt-3 text-sm font-semibold text-brand-primary">Archivo seleccionado: {fileName}</p> : null}
+        {fileName ? <p className="mt-3 text-sm font-semibold text-brand-ink">Archivo seleccionado: {fileName}</p> : null}
       </div>
 
       {!canSubmit ? (
@@ -147,8 +147,8 @@ export function TransactionForm({ projects, categories, role, today }: Transacti
       {error ? <p role="alert" aria-live="polite" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">{error}</p> : null}
 
       <div className="flex flex-col-reverse gap-3 border-t border-brand-border pt-6 sm:flex-row sm:justify-end">
-        <Link href="/dashboard/finance" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-bold text-brand-primary transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">Cancelar</Link>
-        <button type="submit" disabled={isSubmitting || !canSubmit} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-primary px-6 text-sm font-bold text-white transition hover:bg-brand-secondary disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
+        <Link href="/dashboard/finance" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-semibold text-brand-ink transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">Cancelar</Link>
+        <button type="submit" disabled={isSubmitting || !canSubmit} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-primary px-6 text-sm font-semibold text-white transition hover:bg-brand-secondary disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
           {isSubmitting ? "Guardando…" : "Registrar movimiento"}
         </button>
       </div>

@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, chore/environment-setup]
 permissions:
   contents: read
 jobs:
@@ -82,3 +82,44 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - name: Verify workforce rules and transactions on isolated Firebase emulators
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          npx --yes firebase-tools@15.34.1 emulators:exec --project demo-workforce-security --config ../../firebase/emulators.json --only firestore,storage "npm run test:firestore"
+
+  workforce-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: pip install -r apps/api/requirements-dev.txt
+      - name: Install browser QA tools
+        working-directory: apps/web
+        run: |
+          npm install --global npm@11.19.0
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Test complete day against isolated synthetic database
+        working-directory: apps/web
+        run: npm run test:e2e
+      - name: Test Firebase operational flow in desktop and mobile browsers
+        working-directory: apps/web
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          NEXT_PUBLIC_DATA_SOURCE=firebase NEXT_PUBLIC_API_URL='' NEXT_PUBLIC_FIREBASE_EMULATORS=1 npm run dev -- --hostname 127.0.0.1 --port 3004 > /tmp/workforce-next.log 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true' EXIT
+          node -e 'for(let i=0;i<60;i++){try{if((await fetch("http://127.0.0.1:3004/login")).ok)process.exit(0)}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)' --input-type=module
+          npx --yes firebase-tools@15.34.1 emulators:exec --project demo-workforce-browser --config ../../firebase/emulators.json --only firestore,auth,storage "npm run test:firebase-browser"

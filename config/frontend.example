@@ -1,4 +1,5 @@
-# Public build-time values, never credentials. Rebuild and redeploy after changes.
+# Public build-time settings. Firebase Hosting supplies its public web config at runtime.
 NEXT_PUBLIC_SITE_URL=https://fincamamasgarden.com
-# Empty deliberately disables API requests until Django has a real HTTPS origin.
+# firebase (read-only operational data), django (API), or explicit demo (synthetic only).
+NEXT_PUBLIC_DATA_SOURCE=firebase
 NEXT_PUBLIC_API_URL=

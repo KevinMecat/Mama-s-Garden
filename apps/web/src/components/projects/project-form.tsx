@@ -44,8 +44,8 @@ export function ProjectForm({ project }: { project?: Project }) {
     }
   }
 
-  const inputClass = "mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-primary outline-none transition placeholder:text-brand-muted/60 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/25";
-  const labelClass = "text-sm font-semibold text-brand-primary";
+  const inputClass = "mt-2 min-h-12 w-full rounded-xl border border-brand-border bg-white px-4 text-base text-brand-ink outline-none transition placeholder:text-brand-muted/60 focus:border-brand-secondary focus:ring-4 focus:ring-brand-sage/25";
+  const labelClass = "text-sm font-semibold text-brand-ink";
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-6">
@@ -95,10 +95,10 @@ export function ProjectForm({ project }: { project?: Project }) {
       ) : null}
 
       <div className="flex flex-col-reverse gap-3 border-t border-brand-border pt-6 sm:flex-row sm:justify-end">
-        <Link href={project ? `/dashboard/projects/detail?id=${project.id}` : "/dashboard/projects"} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-bold text-brand-primary transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
+        <Link href={project ? `/dashboard/projects/detail?id=${project.id}` : "/dashboard/projects"} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-brand-border bg-white px-5 text-sm font-semibold text-brand-ink transition hover:bg-brand-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
           Cancelar
         </Link>
-        <button type="submit" disabled={isSubmitting} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-primary px-6 text-sm font-bold text-white transition hover:bg-brand-secondary disabled:cursor-wait disabled:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
+        <button type="submit" disabled={isSubmitting} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-primary px-6 text-sm font-semibold text-white transition hover:bg-brand-secondary disabled:cursor-wait disabled:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary">
           {isSubmitting ? "Guardando…" : project ? "Guardar cambios" : "Crear proyecto"}
         </button>
       </div>

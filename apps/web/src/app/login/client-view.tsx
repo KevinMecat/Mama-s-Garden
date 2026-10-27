@@ -1,6 +1,5 @@
 "use client";
 import { ClientPage } from "@/components/client-page";
-import { isApiConfigured } from "@/lib/api-client";
 import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
@@ -9,7 +8,7 @@ import { getCurrentUser } from "@/lib/page-api";
 import { redirect } from "@/lib/client-navigation";
 
 async function loadPage() {
-  const user = isApiConfigured() ? await getCurrentUser().catch(() => null) : null;
+  const user = await getCurrentUser().catch(() => null);
   if (user) redirect("/dashboard");
 
   return (
@@ -26,10 +25,10 @@ async function loadPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-primary/90 via-brand-primary/35 to-transparent lg:bg-gradient-to-r" />
         <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-10 lg:p-14">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/75">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
             Gestión con propósito
           </p>
-          <h1 className="mt-3 max-w-xl font-display text-3xl leading-tight font-semibold sm:text-4xl lg:text-5xl">
+          <h1 className="mt-3 max-w-xl font-sans text-3xl leading-tight font-semibold sm:text-4xl lg:text-5xl">
             Cada jornada de la finca, mejor organizada.
           </h1>
         </div>
@@ -37,14 +36,14 @@ async function loadPage() {
 
       <section className="flex items-center px-5 py-10 sm:px-10 lg:px-14">
         <div className="mx-auto w-full max-w-md">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-secondary">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-secondary">
             Acceso privado
           </p>
-          <h2 className="mt-3 font-display text-4xl font-semibold tracking-tight text-brand-primary sm:text-5xl">
+          <h2 className="mt-3 font-sans text-4xl font-semibold tracking-tight text-brand-ink sm:text-5xl">
             Bienvenido de nuevo
           </h2>
           <p className="mt-4 text-base leading-7 text-brand-muted">
-            Ingresa con el correo y la contraseña asignados por el administrador.
+            Ingresa con el correo y la contraseña de tu cuenta de la finca.
           </p>
 
           <LoginForm />

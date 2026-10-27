@@ -77,7 +77,7 @@ export function AuthControls() {
   return (
     <div className="flex items-center gap-3">
       <div className="hidden max-w-48 text-right sm:block">
-        <p className="truncate text-sm font-semibold text-brand-primary">{displayName}</p>
+        <p className="truncate text-sm font-semibold text-brand-ink">{displayName}</p>
         <p className="text-xs text-brand-muted">{user.role_label}</p>
       </div>
       <Link
@@ -90,7 +90,7 @@ export function AuthControls() {
         type="button"
         onClick={handleLogout}
         disabled={isClosingSession}
-        className="inline-flex min-h-11 items-center justify-center rounded-full border border-brand-border bg-white px-4 text-sm font-semibold text-brand-primary transition hover:bg-brand-cream disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+        className="inline-flex min-h-11 items-center justify-center rounded-full border border-brand-border bg-white px-4 text-sm font-semibold text-brand-ink transition hover:bg-brand-cream disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
       >
         <span className="sm:hidden">Salir</span>
         <span className="hidden sm:inline">

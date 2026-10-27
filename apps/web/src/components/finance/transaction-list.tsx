@@ -1,13 +1,13 @@
 import { apiUrl } from "@/lib/api-client";
 import type { FinancialTransaction } from "@/types/finance";
 
-const currencyFormatter = new Intl.NumberFormat("es-GT", {
+const currencyFormatter = new Intl.NumberFormat("es-NI", {
   style: "currency",
-  currency: "GTQ",
+  currency: "USD",
   minimumFractionDigits: 2,
 });
 
-const dateFormatter = new Intl.DateTimeFormat("es-GT", {
+const dateFormatter = new Intl.DateTimeFormat("es-NI", {
   day: "2-digit",
   month: "short",
   year: "numeric",
@@ -49,8 +49,8 @@ function ReceiptLink({ transaction }: { transaction: FinancialTransaction }) {
 export function TransactionList({ transactions }: { transactions: FinancialTransaction[] }) {
   if (!transactions.length) {
     return (
-      <div className="rounded-[1.5rem] border border-dashed border-brand-border bg-brand-surface px-6 py-12 text-center">
-        <p className="font-display text-2xl font-semibold text-brand-primary">No hay movimientos con estos filtros</p>
+      <div className="rounded-xl border border-dashed border-brand-border bg-brand-surface px-6 py-12 text-center">
+        <p className="font-sans text-2xl font-semibold text-brand-ink">No hay movimientos con estos filtros</p>
         <p className="mt-2 text-brand-muted">Cambia los filtros o registra el primer movimiento financiero.</p>
       </div>
     );
@@ -63,26 +63,26 @@ export function TransactionList({ transactions }: { transactions: FinancialTrans
           <article key={transaction.id} className="rounded-[1.35rem] border border-brand-border bg-brand-surface p-5 shadow-[0_12px_32px_rgba(72,73,39,0.06)]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className={`text-xs font-bold uppercase tracking-[0.12em] ${typeStyles[transaction.type]}`}>{transaction.type_label}</p>
-                <h3 className="mt-2 font-display text-xl font-semibold leading-tight text-brand-primary">
+                <p className={`text-xs font-semibold uppercase tracking-[0.12em] ${typeStyles[transaction.type]}`}>{transaction.type_label}</p>
+                <h3 className="mt-2 font-sans text-xl font-semibold leading-tight text-brand-ink">
                   {transaction.description || transaction.category_name}
                 </h3>
               </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-bold ring-1 ring-inset ${statusStyles[transaction.status]}`}>{transaction.status_label}</span>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1 ring-inset ${statusStyles[transaction.status]}`}>{transaction.status_label}</span>
             </div>
-            <p className="mt-4 text-2xl font-bold text-brand-primary">{currencyFormatter.format(Number(transaction.amount))}</p>
+            <p className="mt-4 text-2xl font-semibold text-brand-ink">{currencyFormatter.format(Number(transaction.amount))}</p>
             <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-brand-border/70 pt-4 text-sm">
               <div>
                 <dt className="text-brand-muted">Proyecto</dt>
-                <dd className="mt-1 font-semibold text-brand-primary">{transaction.project_name}</dd>
+                <dd className="mt-1 font-semibold text-brand-ink">{transaction.project_name}</dd>
               </div>
               <div>
                 <dt className="text-brand-muted">Fecha</dt>
-                <dd className="mt-1 font-semibold text-brand-primary">{formatDate(transaction.transaction_date)}</dd>
+                <dd className="mt-1 font-semibold text-brand-ink">{formatDate(transaction.transaction_date)}</dd>
               </div>
               <div>
                 <dt className="text-brand-muted">Categoría</dt>
-                <dd className="mt-1 font-semibold text-brand-primary">{transaction.category_name}</dd>
+                <dd className="mt-1 font-semibold text-brand-ink">{transaction.category_name}</dd>
               </div>
               <div>
                 <dt className="text-brand-muted">Comprobante</dt>
@@ -93,31 +93,31 @@ export function TransactionList({ transactions }: { transactions: FinancialTrans
         ))}
       </div>
 
-      <div className="hidden overflow-hidden rounded-[1.5rem] border border-brand-border bg-brand-surface shadow-[0_12px_32px_rgba(72,73,39,0.05)] md:block">
+      <div className="hidden overflow-hidden rounded-xl border border-brand-border bg-brand-surface shadow-[0_12px_32px_rgba(72,73,39,0.05)] md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[880px] border-collapse text-left text-sm">
             <thead className="bg-brand-cream/65 text-xs uppercase tracking-[0.1em] text-brand-muted">
               <tr>
-                <th className="px-5 py-4 font-bold">Fecha y detalle</th>
-                <th className="px-5 py-4 font-bold">Proyecto</th>
-                <th className="px-5 py-4 font-bold">Tipo</th>
-                <th className="px-5 py-4 font-bold">Monto</th>
-                <th className="px-5 py-4 font-bold">Estado</th>
-                <th className="px-5 py-4 font-bold">Comprobante</th>
+                <th className="px-5 py-4 font-semibold">Fecha y detalle</th>
+                <th className="px-5 py-4 font-semibold">Proyecto</th>
+                <th className="px-5 py-4 font-semibold">Tipo</th>
+                <th className="px-5 py-4 font-semibold">Monto</th>
+                <th className="px-5 py-4 font-semibold">Estado</th>
+                <th className="px-5 py-4 font-semibold">Comprobante</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-border/70">
               {transactions.map((transaction) => (
                 <tr key={transaction.id} className="align-top transition hover:bg-brand-paper/70">
                   <td className="px-5 py-5">
-                    <p className="font-semibold text-brand-primary">{transaction.description || transaction.category_name}</p>
+                    <p className="font-semibold text-brand-ink">{transaction.description || transaction.category_name}</p>
                     <p className="mt-1 text-xs text-brand-muted">{formatDate(transaction.transaction_date)} · {transaction.category_name}</p>
                   </td>
-                  <td className="px-5 py-5 font-semibold text-brand-primary">{transaction.project_name}</td>
-                  <td className={`px-5 py-5 font-bold ${typeStyles[transaction.type]}`}>{transaction.type_label}</td>
-                  <td className="px-5 py-5 text-base font-bold text-brand-primary">{currencyFormatter.format(Number(transaction.amount))}</td>
+                  <td className="px-5 py-5 font-semibold text-brand-ink">{transaction.project_name}</td>
+                  <td className={`px-5 py-5 font-semibold ${typeStyles[transaction.type]}`}>{transaction.type_label}</td>
+                  <td className="px-5 py-5 text-base font-semibold text-brand-ink">{currencyFormatter.format(Number(transaction.amount))}</td>
                   <td className="px-5 py-5">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${statusStyles[transaction.status]}`}>{transaction.status_label}</span>
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyles[transaction.status]}`}>{transaction.status_label}</span>
                   </td>
                   <td className="px-5 py-5"><ReceiptLink transaction={transaction} /></td>
                 </tr>

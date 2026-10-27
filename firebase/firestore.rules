@@ -1,0 +1,530 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function activeUser() {
+      return signedIn()
+        && userProfile().data.get('active', false) == true
+        && userProfile().data.get('role', '') in ['admin', 'manager', 'worker', 'supervisor'];
+    }
+
+    function isAdmin() {
+      return activeUser() && userProfile().data.role == 'admin';
+    }
+
+    function isSupervisor() {
+      return activeUser() && userProfile().data.role == 'supervisor';
+    }
+
+    function isManager() {
+      return activeUser() && userProfile().data.role == 'manager';
+    }
+
+    function isWorker() {
+      return activeUser() && userProfile().data.role == 'worker';
+    }
+
+    function canManageTransactions() {
+      return isAdmin();
+    }
+
+    function activeWorker(workerId) {
+      return get(/databases/$(database)/documents/workers/$(workerId)).data.status == 'active';
+    }
+
+    function validWorker() {
+      return request.resource.data.keys().hasOnly([
+          'firstName', 'lastName', 'age', 'sex', 'area', 'status', 'photoUrl',
+          'periods', 'createdDate', 'createdByUid', 'updatedAt', 'serverUpdatedAt'
+        ])
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() >= 2
+        && request.resource.data.firstName.size() <= 70
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() >= 2
+        && request.resource.data.lastName.size() <= 70
+        && request.resource.data.age is int
+        && request.resource.data.age >= 18
+        && request.resource.data.age <= 100
+        && request.resource.data.sex in ['female', 'male', 'other', 'unspecified']
+        && request.resource.data.status in ['active', 'inactive']
+        && request.resource.data.area is string
+        && request.resource.data.area.size() <= 60
+        && request.resource.data.photoUrl is string
+        && request.resource.data.photoUrl.size() <= 1000
+        && request.resource.data.periods is list;
+    }
+
+    function validAttendance() {
+      return request.resource.data.keys().hasOnly([
+          'workerId', 'date', 'weekStart', 'status', 'arrival', 'justified', 'note',
+          'updatedAt', 'updatedByUid', 'updatedByRole', 'serverUpdatedAt'
+        ])
+        && request.resource.data.workerId is string
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && request.resource.data.weekStart is string
+        && request.resource.data.weekStart.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && request.resource.data.status in ['present', 'absent', 'half', 'late']
+        && request.resource.data.arrival is string
+        && request.resource.data.arrival.matches('^$|^(?:[01]\\d|2[0-3]):[0-5]\\d$')
+        && request.resource.data.justified is bool
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 240
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedByRole == userProfile().data.role
+        && !exists(/databases/$(database)/documents/payrolls/$(request.resource.data.weekStart));
+    }
+
+    function validMicrobusiness(microbusinessId) {
+      return request.resource.data.keys().hasOnly([
+          'name', 'description', 'avatarUrl', 'avatarPath', 'status',
+          'createdAt', 'serverCreatedAt', 'createdByUid',
+          'updatedAt', 'serverUpdatedAt', 'updatedByUid'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.description is string
+        && request.resource.data.description.size() >= 10
+        && request.resource.data.description.size() <= 500
+        && request.resource.data.avatarUrl is string
+        && request.resource.data.avatarPath is string
+        && ((request.resource.data.avatarUrl == '' && request.resource.data.avatarPath == '')
+          || (request.resource.data.avatarUrl.matches('^https://firebasestorage\\.googleapis\\.com/v0/b/[A-Za-z0-9.-]+/o/.+')
+            && request.resource.data.avatarPath.matches('^microbusinesses/' + microbusinessId + '/avatar/[A-Za-z0-9-]+\\.(jpg|png|webp)$')))
+        && request.resource.data.status in ['active', 'inactive']
+        && request.resource.data.updatedByUid == request.auth.uid;
+    }
+
+    function validTransaction(transactionId) {
+      return request.resource.data.keys().hasOnly([
+          'date', 'type', 'amountCents', 'currency', 'category', 'description',
+          'microbusiness_id', 'receiptUrl', 'receiptPath',
+          'createdAt', 'serverCreatedAt', 'createdByUid', 'createdByRole',
+          'updatedAt', 'serverUpdatedAt', 'updatedByUid'
+        ])
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && request.resource.data.type in ['income', 'expense', 'investment']
+        && request.resource.data.amountCents is int
+        && request.resource.data.amountCents > 0
+        && request.resource.data.get('currency', 'NIO') in ['USD', 'NIO']
+        && request.resource.data.amountCents <= 99999999999
+        && request.resource.data.category is string
+        && request.resource.data.category.size() >= 2
+        && request.resource.data.category.size() <= 80
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 240
+        && (request.resource.data.microbusiness_id == null
+          || (request.resource.data.microbusiness_id is string
+            && exists(/databases/$(database)/documents/microbusinesses/$(request.resource.data.microbusiness_id))))
+        && request.resource.data.receiptUrl is string
+        && request.resource.data.receiptPath is string
+        && ((request.resource.data.receiptUrl == '' && request.resource.data.receiptPath == '')
+          || (request.resource.data.receiptUrl.matches('^https://firebasestorage\\.googleapis\\.com/v0/b/[A-Za-z0-9.-]+/o/.+')
+            && (request.resource.data.receiptPath.matches('^(transaction-receipts|facturas)/' + request.auth.uid + '/' + transactionId + '/[A-Za-z0-9-]+\\.(jpg|png|webp|pdf)$')
+              || (resource != null && request.resource.data.receiptPath == resource.data.receiptPath && request.resource.data.receiptUrl == resource.data.receiptUrl))))
+        && request.resource.data.updatedByUid == request.auth.uid;
+    }
+
+    function publicText(data, key, min, max) {
+      return data[key] is string && data[key].size() >= min && data[key].size() <= max;
+    }
+
+    function publicUrl(value, required) {
+      return value is string && value.size() <= 2000
+        && ((!required && value == '') || value.matches('^https://[^ /@]+/?.*'));
+    }
+
+    function validLanding() {
+      let data = request.resource.data;
+      let fields = [
+        'schemaVersion', 'revision', 'updatedAt', 'updatedByUid',
+        'brandName', 'heroTitle', 'heroSubtitle', 'aboutTitle', 'aboutText', 'mission', 'values',
+        'address', 'directions', 'travelTime', 'latitude', 'longitude',
+        'phone', 'whatsapp', 'email', 'facebookUrl', 'instagramUrl',
+        'heroImageUrl', 'heroImageAlt', 'galleryOneUrl', 'galleryOneAlt',
+        'galleryTwoUrl', 'galleryTwoAlt', 'galleryThreeUrl', 'galleryThreeAlt'
+      ];
+      return data.keys().hasAll(fields) && data.keys().hasOnly(fields.concat(['aboutImageUrl', 'aboutImageAlt']))
+        && data.schemaVersion == 1 && data.revision is int && data.revision > 0
+        && data.updatedByUid == request.auth.uid && data.updatedAt == request.time
+        && publicText(data, 'brandName', 1, 60)
+        && publicText(data, 'heroTitle', 1, 120)
+        && publicText(data, 'heroSubtitle', 1, 300)
+        && publicText(data, 'aboutTitle', 1, 120)
+        && publicText(data, 'aboutText', 1, 2500)
+        && publicText(data, 'mission', 1, 600)
+        && publicText(data, 'values', 1, 600)
+        && publicText(data, 'address', 1, 300)
+        && publicText(data, 'directions', 0, 1200)
+        && publicText(data, 'travelTime', 0, 300)
+        && publicText(data, 'phone', 0, 30)
+        && publicText(data, 'whatsapp', 0, 30)
+        && publicText(data, 'email', 0, 254)
+        && (data.email == '' || data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'))
+        && (data.phone == '' || data.phone.matches('^\\+?[0-9 ()-]{7,30}$'))
+        && (data.whatsapp == '' || data.whatsapp.matches('^\\+?[0-9 ()-]{7,30}$'))
+        && publicUrl(data.facebookUrl, false) && data.facebookUrl.size() <= 500
+        && publicUrl(data.instagramUrl, false) && data.instagramUrl.size() <= 500
+        && publicUrl(data.heroImageUrl, true) && publicText(data, 'heroImageAlt', 1, 180)
+        && publicUrl(data.get('aboutImageUrl', ''), false)
+        && data.get('aboutImageAlt', '') is string && data.get('aboutImageAlt', '').size() <= 180
+        && publicUrl(data.galleryOneUrl, true) && publicText(data, 'galleryOneAlt', 1, 180)
+        && publicUrl(data.galleryTwoUrl, true) && publicText(data, 'galleryTwoAlt', 1, 180)
+        && publicUrl(data.galleryThreeUrl, true) && publicText(data, 'galleryThreeAlt', 1, 180)
+        && ((data.latitude == null && data.longitude == null)
+          || (data.latitude is number && data.longitude is number
+            && data.latitude >= -90 && data.latitude <= 90
+            && data.longitude >= -180 && data.longitude <= 180));
+    }
+
+    // Only this single document contains anonymous-readable corporate content.
+    match /site_config/landing_page {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isAdmin() && validLanding() && request.resource.data.revision == 1;
+      allow update: if isAdmin() && validLanding()
+        && request.resource.data.revision == resource.data.revision + 1;
+      allow delete: if false;
+    }
+
+    match /leads/{leadId} {
+      allow get, list: if isAdmin();
+      allow create: if request.resource.data.keys().hasAll(['name','email','message','consent','source','status','website','createdAt'])
+        && request.resource.data.keys().hasOnly(['name','email','message','consent','source','status','website','createdAt'])
+        && publicText(request.resource.data, 'name', 2, 80)
+        && publicText(request.resource.data, 'email', 3, 254)
+        && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
+        && publicText(request.resource.data, 'message', 10, 2000)
+        && request.resource.data.consent == true
+        && request.resource.data.source == 'landing'
+        && request.resource.data.status == 'new'
+        && request.resource.data.website == ''
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      // Las cuentas y perfiles se crean únicamente desde Cloud Functions/Admin SDK.
+      allow create, update, delete: if false;
+    }
+
+    match /settings/{documentId} {
+      allow read: if activeUser();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /workers/{workerId} {
+      allow get: if isAdmin() || ((isSupervisor() || isManager()) && resource.data.status == 'active') || (isWorker() && boundWorker() == workerId);
+      allow list: if isAdmin() || ((isSupervisor() || isManager()) && resource.data.status == 'active');
+      allow create, update: if isAdmin() && validWorker();
+      allow delete: if false;
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if activeUser();
+      allow create, update: if validAttendance()
+        && (isAdmin() || (isSupervisor() && activeWorker(request.resource.data.workerId)));
+      allow delete: if (isAdmin() || (isSupervisor() && activeWorker(resource.data.workerId)))
+        && !exists(/databases/$(database)/documents/payrolls/$(resource.data.weekStart));
+    }
+
+    // Nunca se concede acceso financiero al rol supervisor.
+    match /salaries/{salaryId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /payrolls/{payrollId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /microbusinesses/{microbusinessId} {
+      allow read: if activeUser();
+      allow create: if isAdmin()
+        && validMicrobusiness(microbusinessId)
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdByUid == request.auth.uid;
+      allow update: if isAdmin()
+        && validMicrobusiness(microbusinessId)
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.serverCreatedAt == resource.data.serverCreatedAt;
+      allow delete: if false;
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if canManageTransactions();
+      allow create: if canManageTransactions()
+        && validTransaction(transactionId)
+        && request.resource.data.currency == 'USD'
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdByRole == userProfile().data.role;
+      allow update: if canManageTransactions()
+        && validTransaction(transactionId)
+        && request.resource.data.get('currency', 'NIO') == resource.data.get('currency', 'NIO')
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.microbusiness_id == resource.data.microbusiness_id
+        && (isAdmin() || resource.data.createdByUid == request.auth.uid)
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdByRole == resource.data.createdByRole
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.serverCreatedAt == resource.data.serverCreatedAt;
+      allow delete: if isAdmin();
+    }
+
+    match /audit/{eventId} {
+      allow read: if isAdmin();
+      allow create: if activeUser()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorRole == userProfile().data.role;
+      allow update, delete: if false;
+    }
+
+    // Operational records are separate from the original personnel/payroll data.
+    function planner() { return activeUser() && userProfile().data.role in ['admin','manager','supervisor']; }
+    function boundWorker() {
+      return get(/databases/$(database)/documents/workforce_accounts/$(request.auth.uid)).data.workerId;
+    }
+    function canReadTask(t) {
+      return activeUser() && (userProfile().data.role in ['admin','manager','supervisor'] || (userProfile().data.role == 'worker' && boundWorker() in t.assignees));
+    }
+    function taskAfter(id) { return getAfter(/databases/$(database)/documents/workforce_tasks/$(id)).data; }
+    function eventAfter(t) { return getAfter(/databases/$(database)/documents/workforce_history/$(t.lastOperationId)).data; }
+    function assignedActive(ids, i) { return ids.size() <= i || activeWorker(ids[i]); }
+    function validPlan(t) {
+      return t.title is string && t.title.size() > 0 && t.title.size() <= 160
+        && t.activity is string && t.activity.size() > 0 && t.activity.size() <= 120
+        && t.project is string && (t.project == '' || exists(/databases/$(database)/documents/microbusinesses/$(t.project)))
+        && t.location is string && t.location.size() > 0 && t.location.size() <= 200
+        && t.assignees is list && t.assignees.size() > 0 && t.assignees.size() <= 6
+        && t.assignees.toSet().size() == t.assignees.size()
+        && t.assigneeNames is map && t.assigneeNames.keys().hasOnly(t.assignees) && t.assigneeNames.keys().hasAll(t.assignees)
+        && t.dueDate is string && t.dueDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && t.priority in ['low', 'normal', 'high', 'urgent']
+        && t.instructions is string && t.instructions.size() <= 4000
+        && t.acceptanceCriteria is string && t.acceptanceCriteria.size() > 0 && t.acceptanceCriteria.size() <= 2000
+        && (t.targetQuantity == null || (t.targetQuantity is number && t.targetQuantity > 0 && t.targetQuantity <= 1000000000 && t.unit.size() > 0))
+        && t.unit is string && t.unit.size() <= 60
+        && (t.estimatedHours == null || (t.estimatedHours is number && t.estimatedHours > 0 && t.estimatedHours <= 24));
+    }
+    function activeAssignments(t) {
+      return assignedActive(t.assignees, 0) && assignedActive(t.assignees, 1) && assignedActive(t.assignees, 2)
+        && assignedActive(t.assignees, 3) && assignedActive(t.assignees, 4) && assignedActive(t.assignees, 5)
+        && (!exists(/databases/$(database)/documents/workforce_settings/people)
+          || !t.assignees.hasAny(get(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds));
+    }
+    function taskKeys(t) {
+      return t.keys().hasOnly(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','status','isBlocked','blockReason','isCancelled','cancelReason','revision','logCount','latestLogId','latestReviewId','lastOperationId','createdBy','updatedBy','createdAt','updatedAt'])
+        && t.isBlocked is bool && t.blockReason is string && t.blockReason.size() <= 2000
+        && t.isCancelled is bool && t.cancelReason is string && t.cancelReason.size() <= 2000
+        && t.status in ['todo','in_progress','review','done']
+        && t.logCount is int && t.logCount >= 0 && t.revision is int
+        && t.latestLogId is string && t.latestReviewId is string && t.lastOperationId is string;
+    }
+    function linkedEvent(t, id, action) {
+      let e = eventAfter(t);
+      return e.taskId == id && e.actor == request.auth.uid && e.action == action
+        && e.revision == t.revision && e.toStatus == t.status && e.createdAt == request.time;
+    }
+    function minuteValid(m, ids, i) { return ids.size() <= i || (m[ids[i]] is int && m[ids[i]] > 0 && m[ids[i]] <= 1440); }
+    function validLog(l, t) {
+      return l.keys().hasOnly(['taskId','assignees','result','criterionMet','quantity','minutes','incidents','evidence','workDate','createdBy','createdAt'])
+        && l.assignees == t.assignees && l.createdBy == request.auth.uid && l.createdAt == request.time
+        && l.result is string && l.result.size() > 0 && l.result.size() <= 4000 && l.criterionMet is bool
+        && ((t.targetQuantity == null && l.quantity == null) || (t.targetQuantity != null && l.quantity is number && l.quantity >= 0 && l.quantity <= 1000000000))
+        && l.minutes is map && l.minutes.keys().hasOnly(t.assignees) && l.minutes.keys().hasAll(t.assignees)
+        && minuteValid(l.minutes,t.assignees,0) && minuteValid(l.minutes,t.assignees,1) && minuteValid(l.minutes,t.assignees,2)
+        && minuteValid(l.minutes,t.assignees,3) && minuteValid(l.minutes,t.assignees,4) && minuteValid(l.minutes,t.assignees,5)
+        && l.incidents is string && l.incidents.size() <= 4000 && l.evidence is list && l.evidence.size() <= 5
+        && l.workDate is timestamp && l.workDate <= request.time;
+    }
+    function validReview(r, t) {
+      let l = get(/databases/$(database)/documents/workforce_logs/$(r.logId)).data;
+      return r.keys().hasOnly(['taskId','assignees','logId','accepted','acceptedQuantity','observations','createdBy','createdAt'])
+        && r.assignees == t.assignees && r.logId == t.latestLogId && l.taskId == r.taskId
+        && r.createdBy == request.auth.uid && r.createdAt == request.time && r.accepted is bool
+        && r.observations is string && r.observations.size() <= 4000
+        && ((!r.accepted && r.observations.size() > 0 && r.acceptedQuantity == null)
+          || (r.accepted && l.criterionMet && ((t.targetQuantity == null && r.acceptedQuantity == null)
+            || (t.targetQuantity != null && r.acceptedQuantity is number && r.acceptedQuantity >= 0 && r.acceptedQuantity <= l.quantity))));
+    }
+    function validChange(id, a, b) {
+      let changed = b.diff(a).affectedKeys();
+      let action = eventAfter(b).action;
+      let common = ['revision','lastOperationId','updatedAt','updatedBy'];
+      return taskKeys(b) && b.createdBy == a.createdBy && b.createdAt == a.createdAt
+        && b.revision == a.revision + 1 && b.updatedBy == request.auth.uid && b.updatedAt == request.time
+        && !a.isCancelled && a.status != 'done' && canReadTask(a) && linkedEvent(b,id,action)
+        && ((action == 'block' && !a.isBlocked && b.isBlocked && b.blockReason.size() > 0 && changed.hasOnly(common.concat(['isBlocked','blockReason'])))
+          || (action == 'unblock' && a.isBlocked && !b.isBlocked && b.blockReason == '' && changed.hasOnly(common.concat(['isBlocked','blockReason'])))
+          || (action == 'cancel' && isAdmin() && b.isCancelled && b.cancelReason.size() > 0 && changed.hasOnly(common.concat(['isCancelled','cancelReason'])))
+          || (!a.isBlocked && (
+            (action == 'edit' && planner() && a.logCount == 0 && a.status in ['todo','in_progress'] && validPlan(b) && activeAssignments(b)
+              && changed.hasOnly(common.concat(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours'])))
+            || (action == 'start' && a.status == 'todo' && b.status == 'in_progress' && changed.hasOnly(common.concat(['status'])))
+            || (action == 'submit' && a.status == 'in_progress' && b.status == 'review' && b.latestLogId == b.lastOperationId && b.logCount == a.logCount + 1
+              && (planner() || (a.assignees.size() == 1 && a.assignees[0] == boundWorker()))
+              && validLog(getAfter(/databases/$(database)/documents/workforce_logs/$(b.latestLogId)).data,b)
+              && changed.hasOnly(common.concat(['status','latestLogId','logCount'])))
+            || (action in ['accept','return'] && isAdmin() && a.status == 'review' && b.status == (action == 'accept' ? 'done' : 'in_progress')
+              && b.latestReviewId == b.lastOperationId && getAfter(/databases/$(database)/documents/workforce_reviews/$(b.latestReviewId)).data.accepted == (action == 'accept')
+              && validReview(getAfter(/databases/$(database)/documents/workforce_reviews/$(b.latestReviewId)).data,b)
+              && changed.hasOnly(common.concat(['status','latestReviewId'])))
+          )));
+    }
+    match /workforce_tasks/{id} {
+      allow get: if (resource == null && planner()) || canReadTask(resource.data);
+      allow list: if canReadTask(resource.data);
+      allow create: if planner() && taskKeys(request.resource.data) && validPlan(request.resource.data) && activeAssignments(request.resource.data)
+        && request.resource.data.status == 'todo' && !request.resource.data.isBlocked && !request.resource.data.isCancelled
+        && request.resource.data.blockReason == '' && request.resource.data.cancelReason == ''
+        && request.resource.data.revision == 1 && request.resource.data.logCount == 0
+        && request.resource.data.latestLogId == '' && request.resource.data.latestReviewId == ''
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
+        && linkedEvent(request.resource.data,id,'create');
+      allow update: if validChange(id,resource.data,request.resource.data);
+      allow delete: if false;
+    }
+    match /workforce_history/{id} {
+      allow get: if activeUser() && (resource == null || canReadTask(resource.data));
+      allow list: if canReadTask(resource.data);
+      allow create: if activeUser() && request.resource.data.keys().hasOnly(['taskId','assignees','action','fromStatus','toStatus','reason','revision','actor','actorLabel','fingerprint','createdAt'])
+        && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
+        && request.resource.data.actorLabel is string && request.resource.data.actorLabel.size() > 0 && request.resource.data.actorLabel.size() <= 140
+        && request.resource.data.fingerprint is string && request.resource.data.fingerprint.size() == 64
+        && request.resource.data.reason is string && request.resource.data.reason.size() <= 4000
+        && taskAfter(request.resource.data.taskId).lastOperationId == id
+        && taskAfter(request.resource.data.taskId).revision == request.resource.data.revision
+        && taskAfter(request.resource.data.taskId).assignees == request.resource.data.assignees
+        && taskAfter(request.resource.data.taskId).status == request.resource.data.toStatus
+        && (request.resource.data.action == 'create' ? request.resource.data.fromStatus == '' : request.resource.data.fromStatus == get(/databases/$(database)/documents/workforce_tasks/$(request.resource.data.taskId)).data.status);
+      allow update, delete: if false;
+    }
+    match /workforce_logs/{id} {
+      allow read: if canReadTask(resource.data);
+      allow create: if activeUser() && taskAfter(request.resource.data.taskId).latestLogId == id
+        && taskAfter(request.resource.data.taskId).lastOperationId == id && taskAfter(request.resource.data.taskId).status == 'review'
+        && validLog(request.resource.data,taskAfter(request.resource.data.taskId));
+      allow update, delete: if false;
+    }
+    match /workforce_reviews/{id} {
+      allow read: if canReadTask(resource.data);
+      allow create: if isAdmin() && taskAfter(request.resource.data.taskId).latestReviewId == id
+        && taskAfter(request.resource.data.taskId).lastOperationId == id
+        && validReview(request.resource.data,taskAfter(request.resource.data.taskId));
+      allow update, delete: if false;
+    }
+    match /workforce_accounts/{uid} {
+      allow get: if activeUser() && (isAdmin() || request.auth.uid == uid);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.keys().hasOnly(['workerId','createdBy','createdAt'])
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == 'worker'
+        && get(/databases/$(database)/documents/users/$(uid)).data.active == true
+        && activeWorker(request.resource.data.workerId) && request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    match /workforce_settings/people {
+      allow read: if activeUser();
+      allow create, update: if isAdmin() && request.resource.data.keys().hasOnly(['inactiveWorkerIds']) && request.resource.data.inactiveWorkerIds is list;
+      allow delete: if false;
+    }
+    match /workforce_worker_adjustments/{id} {
+      allow read: if planner() || (isWorker() && boundWorker() == id);
+      allow create, update: if isAdmin() && exists(/databases/$(database)/documents/workers/$(id))
+        && request.resource.data.keys().hasOnly(['firstName','lastName','age','area','profile','status','revision','lastOperationId','updatedBy','updatedAt'])
+        && request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 && request.resource.data.firstName.size() <= 70
+        && request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 && request.resource.data.lastName.size() <= 70
+        && request.resource.data.age is int && request.resource.data.age >= 18 && request.resource.data.age <= 100
+        && request.resource.data.area is string && request.resource.data.area.size() <= 60
+        && request.resource.data.profile is string && request.resource.data.profile.size() <= 2000
+        && request.resource.data.status in ['active','inactive'] && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time
+        && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1)
+        && getAfter(/databases/$(database)/documents/workforce_worker_history/$(request.resource.data.lastOperationId)).data.workerId == id
+        && getAfter(/databases/$(database)/documents/workforce_worker_history/$(request.resource.data.lastOperationId)).data.revision == request.resource.data.revision
+        && (request.resource.data.status == 'inactive') == (id in getAfter(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds);
+      allow delete: if false;
+    }
+    match /workforce_worker_history/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.keys().hasOnly(['workerId','patch','revision','reason','actor','fingerprint','createdAt'])
+        && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 2000
+        && getAfter(/databases/$(database)/documents/workforce_worker_adjustments/$(request.resource.data.workerId)).data.lastOperationId == id
+        && getAfter(/databases/$(database)/documents/workforce_worker_adjustments/$(request.resource.data.workerId)).data.revision == request.resource.data.revision;
+      allow update, delete: if false;
+    }
+    function isoAttendanceDay(t) {
+      return string(t.year()) + '-' + (t.month() < 10 ? '0' : '') + string(t.month()) + '-' + (t.day() < 10 ? '0' : '') + string(t.day());
+    }
+    function attendanceClock(t) { return int(t.split(':')[0]) * 60 + int(t.split(':')[1]); }
+    function validOperationalAttendance(a, id) {
+      let total = a.arrival != '' && a.departure != '' ? attendanceClock(a.departure) - attendanceClock(a.arrival) + (a.nextDay ? 1440 : 0) - a.breakMinutes : 0;
+      return a.keys().hasOnly(['workerId','date','weekStart','status','arrival','departure','nextDay','breakMinutes','justified','note','day','week','revision','lastOperationId','updatedBy','updatedAt'])
+        && a.workerId is string && id == a.workerId + '_' + a.date
+        && a.day is timestamp && a.week is timestamp && a.day == a.day.date() && a.week == a.week.date()
+        && a.day >= timestamp.date(2020,1,1) && a.day <= (request.time - duration.value(6,'h')).date()
+        && a.week.toMillis() % 604800000 == 345600000 && a.day >= a.week && a.day < a.week + duration.value(7,'d')
+        && a.date == isoAttendanceDay(a.day) && a.weekStart == isoAttendanceDay(a.week)
+        && !exists(/databases/$(database)/documents/payrolls/$(a.weekStart))
+        && activeWorker(a.workerId)
+        && (!exists(/databases/$(database)/documents/workforce_settings/people) || !(a.workerId in get(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds))
+        && a.status in ['present','late','half','absent'] && a.nextDay is bool && a.justified is bool
+        && a.arrival is string && a.arrival.matches('^$|^(?:[01]\\d|2[0-3]):[0-5]\\d$')
+        && a.departure is string && a.departure.matches('^$|^(?:[01]\\d|2[0-3]):[0-5]\\d$')
+        && (a.departure == '' || a.arrival != '')
+        && a.breakMinutes is int && a.breakMinutes >= 0 && a.breakMinutes <= 240
+        && (a.status != 'absent' || (a.arrival == '' && a.departure == '' && !a.nextDay && a.breakMinutes == 0))
+        && ((a.arrival != '' && a.departure != '' && total > 0 && total <= 1440) || ((a.arrival == '' || a.departure == '') && a.breakMinutes == 0 && !a.nextDay))
+        && a.note is string && a.note.size() <= 500 && a.revision is int && a.updatedBy == request.auth.uid && a.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/workforce_attendance_history/$(a.lastOperationId)).data.record == a;
+    }
+    match /workforce_attendance/{id} {
+      allow get: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow list: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow create, update: if planner() && validOperationalAttendance(request.resource.data,id)
+        && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1)
+        && (resource == null || (request.resource.data.workerId == resource.data.workerId && request.resource.data.date == resource.data.date));
+      allow delete: if false;
+    }
+    match /workforce_attendance_history/{id} {
+      allow get: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow list: if planner() || (isWorker() && resource.data.workerId == boundWorker());
+      allow create: if planner() && request.resource.data.keys().hasOnly(['workerId','date','recordId','revision','actor','actorLabel','reason','fingerprint','record','createdAt'])
+        && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
+        && request.resource.data.actorLabel is string && request.resource.data.actorLabel.size() <= 140
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
+        && request.resource.data.fingerprint is string && request.resource.data.fingerprint.size() == 64
+        && request.resource.data.recordId == request.resource.data.workerId + '_' + request.resource.data.date
+        && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data.lastOperationId == id
+        && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data.revision == request.resource.data.revision
+        && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data == request.resource.data.record;
+      allow update, delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
