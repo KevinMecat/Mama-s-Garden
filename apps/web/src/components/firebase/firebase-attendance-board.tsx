@@ -3,6 +3,7 @@ import { BusyIndicator } from "@/components/farm-loader";
 import { useRef, useState } from "react";
 import {
   CalendarCheck,
+  UserX,
   Clock3,
   Save,
   History,
@@ -124,10 +125,19 @@ export function FirebaseAttendanceBoard({
       setBusy(false);
     }
   }
-  function quick(w: CloudRow, action: "present" | "arrival" | "departure") {
+  function quick(w: CloudRow, action: "present" | "absent" | "arrival" | "departure") {
     const row = find(w.id),
       plan = draft(w, row);
     if (action === "present") plan.status = "present";
+    if (action === "absent") {
+      if (plan.arrival || plan.departure) {
+        setError("Este registro ya tiene horas. Usa Detalles y correcciones para cambiarlo a ausencia.");
+        return;
+      }
+      plan.status = "absent";
+      plan.breakMinutes = 0;
+      plan.nextDay = false;
+    }
     if (action === "arrival") {
       plan.arrival = timeNow();
       if (plan.status === "absent") plan.status = "present";
@@ -138,6 +148,8 @@ export function FirebaseAttendanceBoard({
       row?.operationalRevision ? Number(row.revision) : 0,
       action === "present"
         ? "Marcación de presencia"
+        : action === "absent"
+          ? "Marcación de ausencia"
         : action === "arrival"
           ? "Entrada registrada ahora"
           : "Salida registrada ahora",
@@ -236,50 +248,15 @@ export function FirebaseAttendanceBoard({
           Exportar CSV
         </button>
       </div>
-      {canEdit && <fieldset className="surface-card p-4">
-        <legend className="px-2 text-sm font-semibold">Modo de registro</legend>
+      {canEdit && <fieldset className="flex flex-wrap items-center gap-3">
+        <legend className="sr-only">Modo de registro</legend>
+        <span className="text-sm font-semibold">Horas:</span>
         <div className="flex flex-wrap gap-2">
           <button className={`f-button ${mode === "automatic" ? "f-primary" : ""}`} aria-pressed={mode === "automatic"} onClick={() => setMode("automatic")}>Automático</button>
           <button className={`f-button ${mode === "manual" ? "f-primary" : ""}`} aria-pressed={mode === "manual"} onClick={() => setMode("manual")}>Manual</button>
         </div>
-        <p className="mt-3 text-xs text-neutral-500">{mode === "automatic" ? "Toca entrada al llegar y salida al terminar: se registra la hora actual de Nicaragua. Para otras fechas o corregir horas, usa Manual." : "Escribe la hora de entrada y de salida de cada trabajador y pulsa Guardar horas. Puedes registrar primero la entrada y completar la salida después."}</p>
+        <span className="text-xs text-neutral-500">{mode === "automatic" ? "Hora actual de Nicaragua" : "Escribe y guarda las horas"}</span>
       </fieldset>}
-      <p className="text-xs text-neutral-500">
-        Hora local de Nicaragua · Semana del {weekFor(date)}. Las horas son
-        informativas: no crean pagos ni modifican planillas.
-      </p>
-      <p className="surface-card p-4 text-sm">
-        <strong>Tiempo neto confirmado: </strong>
-        {selected.some(
-          (r) =>
-            workedMinutes({
-              arrival: text(r.arrival),
-              departure: text(r.departure),
-              nextDay: r.nextDay === true,
-              breakMinutes: Number(r.breakMinutes) || 0,
-            }) !== null,
-        )
-          ? duration(
-              selected.reduce(
-                (sum, r) =>
-                  sum +
-                  Math.max(
-                    0,
-                    workedMinutes({
-                      arrival: text(r.arrival),
-                      departure: text(r.departure),
-                      nextDay: r.nextDay === true,
-                      breakMinutes: Number(r.breakMinutes) || 0,
-                    }) ?? 0,
-                  ),
-                0,
-              ),
-            )
-          : "Sin jornadas cerradas"}
-        <span className="ml-2 text-xs text-neutral-500">
-          Suma de registros cerrados del filtro, sin calcular remuneraciones.
-        </span>
-      </p>
       {error && (
         <p
           role="alert"
@@ -302,22 +279,9 @@ export function FirebaseAttendanceBoard({
           Período cerrado: asistencia protegida contra cambios.
         </p>
       )}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        {Object.entries(attendanceStates).map(([status, label]) => (
-          <article key={status} className="kpi-card !p-4">
-            <p className="text-xs text-neutral-500">{label}</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">
-              {selected.filter((r) => r.status === status).length}
-            </p>
-          </article>
-        ))}
-        <article className="kpi-card !p-4">
-          <p className="text-xs text-neutral-500">Sin marcar en esta fecha</p>
-          <p className="mt-2 text-2xl font-semibold">
-            {workers.filter((w) => w.status === "active" && !find(w.id)).length}
-          </p>
-        </article>
-      </div>
+      {view === "day" && <p className="text-sm text-neutral-500">
+        {filtered.filter((w) => w.status === "active" && find(w.id) && find(w.id)?.status !== "absent").length} presentes · {filtered.filter((w) => w.status === "active" && find(w.id)?.status === "absent").length} ausentes · {filtered.filter((w) => w.status === "active" && !find(w.id)).length} sin marcar
+      </p>}
       {view === "day" ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered
@@ -366,7 +330,7 @@ export function FirebaseAttendanceBoard({
                   {plan.note && <p className="mt-3 text-xs">{plan.note}</p>}
                   {canEdit && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {!row && (
+                      {(!row || plan.status === "absent") && (
                         <button
                           disabled={disabled}
                           className="f-button f-primary"
@@ -374,6 +338,11 @@ export function FirebaseAttendanceBoard({
                         >
                           <CalendarCheck size={14} />
                           Presente
+                        </button>
+                      )}
+                      {plan.status !== "absent" && (
+                        <button disabled={disabled || !!plan.arrival || !!plan.departure} className="f-button" onClick={() => quick(w, "absent")} title={plan.arrival || plan.departure ? "Usa Detalles y correcciones para cambiar una jornada con horas" : undefined}>
+                          <UserX size={14} /> Ausente
                         </button>
                       )}
                       {mode === "automatic" && (
@@ -387,25 +356,17 @@ export function FirebaseAttendanceBoard({
                         </>
                       )}
                       {mode === "manual" && <ManualHours key={`${w.id}-${date}-${row?.revision ?? 0}`} plan={plan} disabled={disabled} onSave={(value) => save(value, row?.operationalRevision ? Number(row.revision) : 0, "Registro manual de horas")} />}
-                      <button
-                        disabled={disabled}
-                        className="f-button"
-                        onClick={() => {
-                          setError("");
-                          setEditor({
-                            plan,
-                            revision: row?.operationalRevision
-                              ? Number(row.revision)
-                              : 0,
-                          });
-                        }}
-                      >
-                        Detalles y correcciones
-                      </button>
                     </div>
                   )}
+                  <details className="mt-4 text-xs text-neutral-500">
+                    <summary className="min-h-8 font-semibold">Más opciones</summary>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                    {canEdit && <button disabled={disabled} className="f-button" onClick={() => {
+                      setError("");
+                      setEditor({ plan, revision: row?.operationalRevision ? Number(row.revision) : 0 });
+                    }}>Detalles y correcciones</button>}
                   <button
-                    className="f-button mt-3"
+                    className="f-button"
                     disabled={busy}
                     onClick={() =>
                       void attendanceHistory(user, w.id, date)
@@ -418,6 +379,8 @@ export function FirebaseAttendanceBoard({
                     <History size={14} />
                     Ver revisiones
                   </button>
+                    </div>
+                  </details>
                 </article>
               );
             })}

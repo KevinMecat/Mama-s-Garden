@@ -221,6 +221,12 @@ try {
   await secondCard.getByLabel("Salida manual",{exact:true}).fill("17:00");
   await secondCard.getByRole("button",{name:"Guardar horas",exact:true}).click();
   await secondCard.getByText("9 h 0 min",{exact:false}).waitFor();
+  const thirdCard = page.locator("article").filter({has:page.getByRole("heading",{name:"Persona 3 Sintética",exact:true})});
+  await thirdCard.getByRole("button", {name:"Ausente",exact:true}).click();
+  await thirdCard.getByText("Ausente",{exact:true}).waitFor();
+  await thirdCard.getByRole("button", {name:"Presente",exact:true}).click();
+  await thirdCard.getByText("Presente",{exact:true}).waitFor();
+  await personCard.locator("summary").filter({hasText:"Más opciones"}).click();
   await personCard
     .getByRole("button", { name: "Detalles y correcciones", exact: true })
     .click();
