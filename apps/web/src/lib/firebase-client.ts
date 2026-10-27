@@ -12,6 +12,8 @@ import {
   memoryLocalCache,
   getDocFromServer,
   getDocsFromServer,
+  setDoc,
+  serverTimestamp,
   doc,
   collection,
   query,
@@ -24,7 +26,7 @@ import {
   type DocumentData,
   connectFirestoreEmulator,
 } from "firebase/firestore";
-import { getStorage, ref, getDownloadURL, connectStorageEmulator } from "firebase/storage";
+import { getStorage, ref, getDownloadURL, connectStorageEmulator, uploadBytes } from "firebase/storage";
 import type { AuthUser, UserRole } from "@/types/auth";
 
 export const FIREBASE_PROJECT = "surco-finca";
@@ -212,6 +214,51 @@ export async function readStorageUrl(value: unknown): Promise<string> {
   if (!auth.currentUser) throw new Error("Inicia sesión para ver archivos.");
   // Metadata is authorized by the existing Storage rules. No token or object is created.
   return getDownloadURL(ref(storage, path));
+}
+
+export async function createFirebaseTransaction(
+  user: AuthUser,
+  input: {
+    date: string;
+    type: "income" | "expense" | "investment";
+    amountCents: number;
+    currency: "USD" | "NIO";
+    category: string;
+    description: string;
+    microbusiness_id: string | null;
+    receipt?: File | null;
+  },
+) {
+  if (user.role !== "ADMIN") throw new Error("Solo un administrador puede registrar movimientos.");
+  const { db, storage } = await firebaseClient();
+  const transaction = doc(collection(db, "transactions"));
+  let receiptPath = "";
+  let receiptUrl = "";
+  if (input.receipt) {
+    const extension = input.receipt.name.toLowerCase().endsWith(".png") ? "png" : input.receipt.name.toLowerCase().endsWith(".webp") ? "webp" : "jpg";
+    receiptPath = `transaction-receipts/${user.id}/${transaction.id}/comprobante.${extension}`;
+    const object = ref(storage, receiptPath);
+    await uploadBytes(object, input.receipt, { contentType: input.receipt.type || "image/jpeg" });
+    receiptUrl = await getDownloadURL(object);
+  }
+  await setDoc(transaction, {
+    date: input.date,
+    type: input.type,
+    amountCents: input.amountCents,
+    currency: input.currency,
+    category: input.category.trim(),
+    description: input.description.trim(),
+    microbusiness_id: input.microbusiness_id,
+    receiptUrl,
+    receiptPath,
+    createdAt: serverTimestamp(),
+    serverCreatedAt: serverTimestamp(),
+    createdByUid: user.id,
+    createdByRole: user.role,
+    updatedAt: serverTimestamp(),
+    serverUpdatedAt: serverTimestamp(),
+    updatedByUid: user.id,
+  });
 }
 export async function searchFirebaseRecords(user: AuthUser) {
   const names = allowedCollections(user.role);

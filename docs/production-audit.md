@@ -506,3 +506,12 @@ siguen disponibles. Se mantienen permisos, períodos cerrados y validación hora
 Prueba de navegador en emuladores aislados: fotografía sintética de Storage,
 entrada automática a las 07:15, salida a las 16:45, edición manual 08:00–17:00,
 CSV, historial y vista móvil. No se introducen marcaciones de prueba en producción.
+
+## Movimientos financieros y comprobantes — 0.3.2
+
+El espacio financiero de Firebase incluye un formulario operativo para
+administradores: permite registrar ingresos, gastos e inversiones con moneda,
+fecha, categoría, unidad, descripción y fotografía del comprobante. La foto se
+sube únicamente a la ruta privada del movimiento y el documento guarda su
+referencia; las reglas mantienen el acceso financiero restringido y no permiten
+sobrescribir comprobantes existentes de otros movimientos.

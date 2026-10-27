@@ -25,6 +25,7 @@ import {
   allowedCollections,
   readCollection,
   readStorageUrl,
+  createFirebaseTransaction,
   firebaseCurrentUser,
   type CloudRow,
   type CollectionName,
@@ -125,6 +126,9 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
     [transactionType, setTransactionType] = useState(""),
     [unit, setUnit] = useState("");
   const [page, setPage] = useState(1);
+  const [movementOpen, setMovementOpen] = useState(false),
+    [movementBusy, setMovementBusy] = useState(false),
+    [movementMessage, setMovementMessage] = useState("");
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -351,6 +355,42 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
     const totals = currencyTotals(filtered);
     return (
       <>
+        {user.role === "ADMIN" && (
+          <section className="surface-card mt-6 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Registrar movimiento</h2>
+                <p className="mt-1 text-xs text-neutral-500">Guarda ingresos, gastos o inversiones con comprobante fotográfico.</p>
+              </div>
+              <button type="button" className="f-button f-primary" onClick={() => { setMovementOpen((value) => !value); setMovementMessage(""); }}>
+                {movementOpen ? "Cerrar formulario" : "Nuevo movimiento"}
+              </button>
+            </div>
+            {movementOpen && <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              const amount = Math.round(Number(form.get("amount")) * 100);
+              if (!Number.isInteger(amount) || amount <= 0) { setMovementMessage("Indica un importe válido."); return; }
+              setMovementBusy(true); setMovementMessage("");
+              void createFirebaseTransaction(user, {
+                date: String(form.get("date")), type: String(form.get("type")) as "income" | "expense" | "investment", amountCents: amount,
+                currency: String(form.get("currency")) as "USD" | "NIO", category: String(form.get("category")), description: String(form.get("description")),
+                microbusiness_id: String(form.get("microbusiness_id") || "") || null, receipt: (form.get("receipt") as File)?.size ? form.get("receipt") as File : null,
+              }).then(() => { setMovementMessage("Movimiento guardado correctamente."); setRevision((value) => value + 1); event.currentTarget.reset(); }).catch((error) => setMovementMessage(error instanceof Error ? error.message : "No se pudo guardar el movimiento.")).finally(() => setMovementBusy(false));
+            }}>
+              <label className="text-xs text-neutral-600">Fecha<input required name="date" type="date" defaultValue={today()} className={`${input} mt-1 w-full`} /></label>
+              <label className="text-xs text-neutral-600">Tipo<select name="type" className={`${input} mt-1 w-full`}><option value="income">Ingreso</option><option value="expense">Gasto</option><option value="investment">Inversión</option></select></label>
+              <label className="text-xs text-neutral-600">Importe<input required min="0.01" step="0.01" name="amount" type="number" className={`${input} mt-1 w-full`} /></label>
+              <label className="text-xs text-neutral-600">Moneda<select name="currency" className={`${input} mt-1 w-full`}><option value="USD">USD</option><option value="NIO">NIO</option></select></label>
+              <label className="text-xs text-neutral-600">Categoría<input required minLength={2} maxLength={80} name="category" className={`${input} mt-1 w-full`} placeholder="Ej. Venta de producto" /></label>
+              <label className="text-xs text-neutral-600">Unidad<select name="microbusiness_id" className={`${input} mt-1 w-full`}><option value="">General · sin unidad</option>{units.map((item) => <option key={item.id} value={item.id}>{text(item.name)}</option>)}</select></label>
+              <label className="text-xs text-neutral-600 sm:col-span-2">Descripción<textarea name="description" maxLength={240} className={`${input} mt-1 min-h-20 w-full py-2`} /></label>
+              <label className="text-xs text-neutral-600 sm:col-span-2">Foto del comprobante<input name="receipt" type="file" accept="image/jpeg,image/png,image/webp" className="mt-1 block w-full text-sm" /></label>
+              <button type="submit" disabled={movementBusy} className="f-button f-primary sm:col-span-2">{movementBusy ? "Guardando…" : "Guardar movimiento"}</button>
+              {movementMessage && <p role="status" className="sm:col-span-2 text-sm text-emerald-700">{movementMessage}</p>}
+            </form>}
+          </section>
+        )}
         <div className="mt-6 flex flex-wrap gap-3">
           <label className="text-xs text-neutral-500">
             Mes
