@@ -71,6 +71,7 @@ class Assignment(models.Model):
 
 
 class WorkLog(models.Model):
+    work_date = models.DateField(null=True, blank=True, db_index=True)
     task = models.ForeignKey(Task, on_delete=models.PROTECT, related_name="work_logs")
     result = models.TextField()
     criterion_met = models.BooleanField()

@@ -79,7 +79,7 @@ export function WorkforceView({ mode }: { mode: Mode }) {
     let active = true;
     const controller = new AbortController();
     const query = new URLSearchParams({ page: String(page) });
-    if (date) query.set("date", date);
+    if (date) query.set(mode === "close" ? "work_date" : "date", date);
     if (employee) query.set("employee", employee);
     if (project) query.set("project", project);
     Promise.all([
@@ -106,7 +106,7 @@ export function WorkforceView({ mode }: { mode: Mode }) {
       active = false;
       controller.abort();
     };
-  }, [date, employee, project, page, version]);
+  }, [date, employee, project, page, version, mode]);
 
   async function mutate(
     route: string,
@@ -178,6 +178,9 @@ export function WorkforceView({ mode }: { mode: Mode }) {
   const manager = options?.administrator ?? false;
 
   function card(task: Task) {
+    const dailyLog = task.work_logs
+      .filter((log) => log.work_date === date)
+      .at(-1);
     return (
       <article
         key={task.id}
@@ -244,13 +247,27 @@ export function WorkforceView({ mode }: { mode: Mode }) {
         )}
         {mode === "close" && (
           <div className="mt-3 space-y-2 rounded-xl bg-brand-paper p-3 text-sm">
-            <p>Tiempo registrado del equipo: {task.hours} h</p>
-            <p className="break-words">
-              Último resultado: {task.work_logs.at(-1)?.result ?? "pendiente"}
+            <p>
+              Tiempo del equipo
+              {mode === "close" && date
+                ? " en la fecha seleccionada"
+                : " registrado"}
+              :{" "}
+              {mode === "close" && date
+                ? (
+                    task.work_logs
+                      .filter((log) => log.work_date === date)
+                      .flatMap((log) => log.times)
+                      .reduce((sum, item) => sum + item.minutes, 0) / 60
+                  ).toFixed(2)
+                : task.hours}{" "}
+              h
             </p>
             <p className="break-words">
-              Incidencias:{" "}
-              {task.work_logs.at(-1)?.incidents || "ninguna registrada"}
+              Último resultado: {dailyLog?.result ?? "pendiente"}
+            </p>
+            <p className="break-words">
+              Incidencias: {dailyLog?.incidents || "ninguna registrada"}
             </p>
           </div>
         )}
@@ -798,7 +815,7 @@ function TaskDialog({
             >
               <p className="break-words whitespace-pre-wrap">{record.result}</p>
               <p>
-                Criterio: {record.criterion_met ? "cumplido" : "pendiente"} ·
+                Fecha real: {record.work_date ?? "no registrada"} · Criterio: {record.criterion_met ? "cumplido" : "pendiente"} ·
                 Cantidad: {record.quantity ?? "no aplicable"}
               </p>
               <p>Incidencias: {record.incidents || "ninguna registrada"}</p>
@@ -1027,6 +1044,17 @@ function TaskDialog({
                   Criterio: {task?.acceptance_criteria}
                 </p>
                 <label className="block">
+                  Fecha real de trabajo
+                  <input
+                    required
+                    type="date"
+                    name="work_date"
+                    className={input}
+                    defaultValue={today()}
+                    max={today()}
+                  />
+                </label>
+                <label className="block">
                   Resultado realizado
                   <textarea
                     required
@@ -1037,7 +1065,7 @@ function TaskDialog({
                 </label>
                 {task?.target_quantity !== null && (
                   <label className="block">
-                    Cantidad realizada ({task?.unit})
+                    Cantidad realizada acumulada ({task?.unit})
                     <input
                       required
                       type="number"
@@ -1072,7 +1100,8 @@ function TaskDialog({
                   Tiempo real dedicado, en minutos
                 </legend>
                 <p className="my-2 text-sm">
-                  No se calcula desde movimientos del tablero y no genera pagos.
+                  Registra solo minutos adicionales de esta entrega, sin repetir
+                  los de entregas anteriores. No genera pagos.
                 </p>
                 {people.map((person) => (
                   <label key={person.id} className="mb-3 block">

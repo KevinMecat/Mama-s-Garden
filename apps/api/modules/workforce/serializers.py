@@ -62,6 +62,7 @@ class CommandSerializer(serializers.Serializer):
             "duplicate",
         )
     )
+    work_date = serializers.DateField(required=False)
     result = serializers.CharField(max_length=5000, required=False)
     criterion_met = serializers.BooleanField(required=False)
     quantity = serializers.DecimalField(

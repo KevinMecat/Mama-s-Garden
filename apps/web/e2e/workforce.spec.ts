@@ -37,20 +37,19 @@ test("complete day, review, mobile layout and connected history", async ({
     .getByRole("button", { name: "Guardar tarea", exact: true })
     .click();
   await expect(dialog).toBeHidden();
-  const card = page
-    .locator("article")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Jornada E2E aislada",
-        exact: true,
-      }),
-    });
+  const card = page.locator("article").filter({
+    has: page.getByRole("heading", {
+      name: "Jornada E2E aislada",
+      exact: true,
+    }),
+  });
   await card.getByRole("button", { name: "Iniciar", exact: true }).focus();
   await page.keyboard.press("Enter");
   await card
     .getByRole("button", { name: "Registrar resultado", exact: true })
     .click();
   dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Fecha real de trabajo").fill("2026-10-27");
   await dialog
     .getByLabel("Resultado realizado")
     .fill("Sin fugas, inspeccionado");
@@ -127,11 +126,9 @@ test("server conflict keeps card state, drag, duplication, connection retry and 
     assignees: [options.employees[0].id],
   });
   await page.reload();
-  const card = page
-    .locator("article")
-    .filter({
-      has: page.getByRole("heading", { name: task.title, exact: true }),
-    });
+  const card = page.locator("article").filter({
+    has: page.getByRole("heading", { name: task.title, exact: true }),
+  });
   await expect(
     card.getByRole("button", { name: "Iniciar", exact: true }),
   ).toBeEnabled();

@@ -198,7 +198,11 @@ def record_result(task, data, user):
         seen.add(person)
     if administrator(user) and seen != assignees:
         raise ValidationError("Indica el tiempo real de cada integrante, sin duplicar cantidades.")
+    work_date = data.get("work_date", timezone.localdate())
+    if work_date > timezone.localdate():
+        raise ValidationError("El trabajo realizado no puede tener fecha futura.")
     log = WorkLog.objects.create(
+        work_date=work_date,
         task=task,
         result=data["result"],
         criterion_met=data["criterion_met"],
@@ -270,7 +274,7 @@ def warnings_for(task):
         minutes = planned.aggregate(value=Sum("estimated_minutes"))["value"] or 0
         actual = (
             TimeEntry.objects.filter(
-                employee=employee, work_log__task__scheduled_date=task.scheduled_date
+                employee=employee, work_log__work_date=task.scheduled_date
             ).aggregate(value=Sum("minutes"))["value"]
             or 0
         )
@@ -295,6 +299,7 @@ def task_data(task, user):
         logs.append(
             {
                 "id": log.pk,
+                "work_date": log.work_date,
                 "result": log.result,
                 "criterion_met": log.criterion_met,
                 "quantity": str(log.quantity) if log.quantity is not None else None,

@@ -3,6 +3,7 @@ import { getCsrfToken } from "@/lib/auth-api";
 
 export type State = "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 export interface WorkRecord {
+  work_date: string | null;
   id: number;
   result: string;
   criterion_met: boolean;

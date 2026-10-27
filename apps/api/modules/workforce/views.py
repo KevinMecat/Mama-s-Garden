@@ -4,6 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
@@ -50,6 +51,9 @@ class TaskViewSet(viewsets.GenericViewSet):
     def list(self, request):
         tasks = self.get_queryset()
         date_field = serializers.DateField()
+        if request.query_params.get("work_date"):
+            day = date_field.run_validation(request.query_params["work_date"])
+            tasks = tasks.filter(Q(scheduled_date=day) | Q(work_logs__work_date=day))
         for query, field in (
             ("date", "scheduled_date"),
             ("from", "scheduled_date__gte"),

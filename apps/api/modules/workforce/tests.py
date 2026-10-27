@@ -264,3 +264,33 @@ def test_zero_result_is_not_pending_and_incomplete_criteria_cannot_finish(setup)
     )
     act(setup, task, "accept", expected=400, observations="No cumple", accepted_quantity="0")
     assert task["work_logs"][0]["quantity"] == "0.00"
+
+
+def test_actual_work_date_is_not_assumed_from_planning(setup):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    day = timezone.localdate()
+    task = create(setup, scheduled_date=str(day - timedelta(days=1)))
+    task = submit(setup, act(setup, task, "start"), work_date=str(day))
+    response = setup[0].get(ROOT, {"work_date": str(day)})
+    assert response.status_code == 200 and response.data["count"] == 1
+    assert response.data["results"][0]["work_logs"][0]["work_date"] == day
+    assert setup[0].get(ROOT, {"date": str(day)}).data["count"] == 0
+
+
+def test_future_work_date_is_rejected_without_persisting_result(setup):
+    task = act(setup, create(setup), "start")
+    act(
+        setup,
+        task,
+        "submit",
+        expected=400,
+        result="No ocurrido",
+        criterion_met=True,
+        work_date="2099-01-01",
+        times=[{"employee": setup[4].pk, "minutes": 10}],
+    )
+    assert not WorkLog.objects.exists()
+    assert Task.objects.get().state == "IN_PROGRESS"
