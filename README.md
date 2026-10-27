@@ -2,6 +2,12 @@
 
 Aplicacion web para la gestion operativa y financiera de la finca.
 
+Producción 0.2.0: Firebase Hosting, Authentication, Firestore y Storage de
+`surco-finca`. El Kanban usa los IDs reales del personal y las unidades existentes;
+sus escrituras se limitan a recursos nuevos `workforce_*`. No hay fallback demo
+en producción. Django/PostgreSQL permanece como proveedor alternativo, sin mezclar
+sus fixtures o migraciones con Firebase. Ver [runbook operativo](docs/workforce-firebase.md).
+
 ## Stack
 
 - Django 5.2 LTS y Django REST Framework
@@ -99,5 +105,6 @@ No genera pagos ni modifica asistencias o planillas.
 
 Contrato, permisos, dependencia del PR de infraestructura, pruebas aisladas y
 procedimiento de respaldo/recuperación: [docs/workforce.md](docs/workforce.md).
-Django/PostgreSQL es la fuente de verdad; las configuraciones preliminares de
-Firestore no forman parte de esta integración.
+La configuración publicada usa Firestore/Storage por instrucción vigente del
+propietario. El contrato Django descrito en documentos anteriores se conserva
+como referencia del proveedor alternativo.

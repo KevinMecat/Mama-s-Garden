@@ -1,4 +1,4 @@
-> Actualización de producción (2026-10-27): por instrucción posterior del propietario, la fuente operativa de este despliegue es Firestore/Storage de `surco-finca`. El cliente Firebase consulta esos registros en modo de solo lectura. El módulo Django descrito abajo se conserva para el proveedor `django`; sus tareas y fixtures no se mezclan con los datos operativos de Firebase. Ver [firebase-hosting.md](firebase-hosting.md).
+> Actualización 0.2.0 (2026-10-27): la fuente operativa vigente es Firestore/Storage de `surco-finca`. El Kanban persiste en colecciones nuevas, reutiliza los IDs reales y conserva intactos los documentos originales. El contrato Django y el diagnóstico histórico que siguen no describen el despliegue actual. Ver [operación Firebase, respaldo y pruebas](workforce-firebase.md).
 
 # Trabajo del personal: diseño, pruebas y entrega
 

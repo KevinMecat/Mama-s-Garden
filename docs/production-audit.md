@@ -377,3 +377,73 @@ SDK Firebase fijado y dependencia transitiva `@grpc/grpc-js` actualizada mediant
 
 
 Publicación completada: Firebase CLI confirmó `Deploy complete!` para 233 archivos. `https://fincamamasgarden.com/login` y `https://surco-finca.web.app/login` responden 200 con HSTS y CSP que permite exclusivamente los servicios Firebase necesarios. La prueba de navegador en el dominio público confirmó proveedor Auth real, rechazo de credenciales demo, protección de rutas, denegación anónima de personal y ausencia de errores de ejecución/CSP. La comparación de nombres y tiempos de actualización de todos los documentos inspeccionados y de generaciones/metageneraciones de los 26 objetos antes/después resultó idéntica. No se sobrescribió ni eliminó ningún registro o archivo. El export no contiene los perfiles operativos; se consultan tras autenticar.
+
+## Anexo vigente: Kanban operativo y conservación — 0.2.0
+
+Este anexo sustituye las afirmaciones históricas de demo pública, Firebase preliminar,
+solo lectura del módulo de trabajo y falta de respaldo Firebase. No certifica ni
+modifica el PostgreSQL local. La rama de partida fue `feature/personal-kanban`,
+HEAD `089fa79d2fa45cfcef3f7b7aa32d167ac6a546d1`, sin cambios locales útiles pendientes.
+PR #2 continúa dependiendo de PR #1, sin reescribir historia ni eludir main.
+
+La publicación previa identificable era Hosting release `1793127148314000`,
+version `15e48bf63c96c0cd`, 2026-10-27 18:52:28 UTC. No llevaba metadatos Git:
+`089fa79` es la última implementación conocida, no una atribución criptográfica
+retrospectiva. A partir de 0.2.0 `/build-info.json` informa el SHA exacto compilado,
+SemVer, fecha, proveedor y si el árbol estaba limpio.
+
+### Protección verificada
+
+Respaldo privado de 795 documentos y 26 objetos, con ACL restringida y manifiesto
+SHA-256 fuera del repositorio. Restauración independiente: 795 documentos en
+Firestore emulado loopback, coincidencia completa de campos; 26 archivos en otro
+directorio privado, hashes idénticos. El acta detallada permanece privada.
+No se presenta una copia de archivos como un ensayo de carga al bucket productivo.
+No hubo semillas, migraciones, reinicios de volúmenes o escrituras de prueba reales.
+
+El adaptador escribe exclusivamente recursos nuevos `workforce_*` y evidencias
+nuevas. Las revisiones de perfil conservan el documento original. Las unidades y
+los trabajadores usan sus IDs existentes; seis activos de siete registros. Las
+tarifas continúan semanales en USD, sin convertirlas a horas/días ni producir pagos.
+
+### Mitigación y riesgos aceptados
+
+| Riesgo | Mitigación y límite |
+| --- | --- |
+| Finalización o revisión sin privilegios | Reglas de Firestore comprueban perfil activo, estados, revisión, cierre y aceptación exclusivamente administrativa |
+| Reintentos, concurrencia y pérdida de red | Transacción, revisión incremental, evento inmutable ligado, UUID/huella idempotente y confirmación del servidor antes de mover la tarjeta |
+| Sobrescritura de datos previos | Solo parches operativos separados; evidencia nueva exige objeto inexistente; documentos, archivos e historial no se borran por el módulo |
+| Asignaciones inválidas | IDs reales, personal activo comprobado en servidor, índice de inactivos revisados, avisos de ausencia y sobrecarga |
+| Medición injusta | Tiempo explícito, incluye cierres devueltos, producción de cuadrilla grupal, cumplimiento sin rankings, cero y pendiente diferenciados |
+| Exposición de salarios/finanzas | Consultas y reglas exclusivamente Admin, también para comprobantes; Encargado no obtiene datos financieros |
+| Dependencias de desarrollo | Herramientas de reglas solo en devDependencies; auditoría npm completa y productiva sin alertas; mapas/trazas del build deben demostrar exclusión antes de publicar |
+| Enlaces heredados de Storage con token | Se preservan los tokens existentes por la prohibición de modificar objetos. Un poseedor de una URL puede compartirla; no se publican en Git, logs o HTML estático. No se afirma revocación automática al cerrar sesión |
+| Desconexión en campo | La operación requiere red para confirmar escritura. No se promete captura offline persistente ni se almacena personal en localStorage |
+| Identidades de trabajadores | Vínculo explícito con cuentas existentes; no se inventan usuarios ni contraseñas. La creación de cuentas adicionales sigue bajo administración autorizada |
+| Recuperación y escala | Respaldo local privado verificado en esta entrega; no equivale a política periódica, retención externa o restauración productiva. No se certificó carga masiva ni alta concurrencia |
+
+### Matriz HTTP para la publicación
+
+| Control | Valor requerido |
+| --- | --- |
+| HTTPS | Certificado válido para el dominio público; HTTP redirige a HTTPS |
+| HSTS | `max-age=31536000; includeSubDomains; preload` |
+| Framing | `X-Frame-Options: DENY` y CSP `frame-ancestors 'none'` |
+| MIME | `X-Content-Type-Options: nosniff` |
+| Referencia | `Referrer-Policy: strict-origin-when-cross-origin` |
+| CSP | Scripts propios y hashes; conexiones a Auth/Firestore/Storage; sin unsafe-eval ni credenciales de servidor |
+| Export | Solo estático, sin mapas públicos, fixtures, documentos operativos, respaldos o archivos secretos |
+| Proveniencia | `/build-info.json`, no-store, SHA del commit limpio publicado |
+
+### Aprobación
+
+- [x] Respaldo privado y restauración aislada verificados.
+- [x] No se modificó PostgreSQL ni los registros operativos originales.
+- [x] Jornada completa, correcciones, seis integrantes, permisos y conservación probados en emuladores.
+- [x] Flujo positivo de navegador aislado, USD, modo oscuro, móvil e historial comprobados.
+- [ ] Aceptación operacional del propietario con su cuenta y contraseña existentes.
+- [ ] Política de respaldo periódico, copia fuera del equipo y retención aprobadas por el propietario.
+
+Firma de ejecución técnica: Codex, 27 de octubre de 2026. No constituye firma
+humana ni certificación de aceptación del propietario. Resultado de publicación
+y verificaciones en vivo se registran al cierre de esta entrega.
