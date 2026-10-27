@@ -1,12 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 // Run from apps/web after an audited build. Only out/ is deployable.
 const root = path.resolve("../..");
 const out = path.resolve("out");
 const provenance = JSON.parse(fs.readFileSync(path.join(out, "build-info.json"), "utf8"));
-if (provenance.dirty || provenance.dataSource === "demo") throw new Error("Only a clean production build can be published.");
+if (provenance.dirty || provenance.dataSource === "demo" || execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() || provenance.sha !== execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim()) throw new Error("Only an unchanged clean production build can be published.");
 const hashes = new Set();
 let pages = 0;
 function visit(dir) {
