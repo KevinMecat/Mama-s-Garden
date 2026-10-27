@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-client";
 import { getCsrfToken } from "@/lib/auth-api";
 import type { CreateProjectInput, Project, UpdateProjectInput } from "@/types/project";
 
@@ -18,7 +19,7 @@ async function getErrorMessage(response: Response) {
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const csrfToken = await getCsrfToken();
-  const response = await fetch(`${PROJECTS_ROOT}/`, {
+  const response = await apiFetch(`${PROJECTS_ROOT}/`, {
     method: "POST",
     cache: "no-store",
     credentials: "include",
@@ -39,7 +40,7 @@ async function mutateProject(
   input?: UpdateProjectInput,
 ) {
   const csrfToken = await getCsrfToken();
-  const response = await fetch(`${PROJECTS_ROOT}/${id}/`, {
+  const response = await apiFetch(`${PROJECTS_ROOT}/${id}/`, {
     method,
     cache: "no-store",
     credentials: "include",

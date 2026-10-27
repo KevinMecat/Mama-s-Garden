@@ -12,30 +12,15 @@ CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
 FROM development AS builder
 ARG SITE_URL=https://fincamamasgarden.com
-ENV NEXT_PUBLIC_SITE_URL=$SITE_URL BUILD_AUDIT_MAPS=1
-RUN npm run build && node scripts/audit-production.mjs build
-# Audit maps are build evidence, never public assets in the final image.
-RUN find .next -type f -name '*.map' -delete
+ARG API_URL=
+ENV NEXT_PUBLIC_SITE_URL=$SITE_URL NEXT_PUBLIC_API_URL=$API_URL BUILD_AUDIT_MAPS=1
+RUN npm run build && node scripts/audit-production.mjs build && node scripts/prepare-hosting.mjs
 
-FROM base AS production-dependencies
-ENV NODE_ENV=production
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force \
-    && find node_modules -type d -name '@types' -prune -exec rm -rf '{}' +
-COPY scripts/audit-production.mjs scripts/audit-production.mjs
-RUN node scripts/audit-production.mjs dependencies
-
-FROM node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS production
-WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
-COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
-COPY --from=production-dependencies --chown=node:node /app/package.json ./package.json
-COPY --from=builder --chown=node:node /app/.next/standalone/server.js ./server.js
-COPY --from=builder --chown=node:node /app/.next/standalone/.next ./.next
-COPY --from=builder --chown=node:node /app/.next/static ./.next/static
-COPY --from=builder --chown=node:node /app/public ./public
-COPY --from=builder --chown=node:node /app/scripts/audit-production.mjs ./scripts/audit-production.mjs
-RUN node scripts/audit-production.mjs runtime && mkdir -p /app/.next/cache && chown node:node /app/.next/cache
-USER node
+# Static runtime: no Node, npm, build tools or dependency tree is shipped.
+FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS production
+COPY --from=builder /app/out /usr/share/nginx/html
+COPY --from=builder /app/hosting-csp.conf /etc/nginx/hosting-csp.conf
+COPY nginx-static.conf /etc/nginx/conf.d/default.conf
+USER 101:101
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["nginx", "-g", "daemon off;"]

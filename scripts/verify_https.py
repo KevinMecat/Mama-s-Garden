@@ -1,6 +1,8 @@
 """Check real HTTP/TLS responses without logging headers, bodies or credentials."""
 
 import argparse
+import base64
+import hashlib
 import re
 import subprocess
 import tempfile
@@ -80,14 +82,25 @@ def main():
         )
         if route == "/login":
             policy = pairs["content-security-policy"][0]
-            assert "'strict-dynamic'" in policy and "'unsafe-eval'" not in policy
-            nonce = re.search(r"'nonce-([^']+)'", headers)
-            assert nonce and f'nonce="{nonce[1]}"' in body, "Nonce no aplicado al HTML"
+            assert "'sha256-" in policy and "'unsafe-eval'" not in policy
+            actual_policy = re.search(r"(?im)^content-security-policy: (.+)$", headers)[
+                1
+            ]
+            for attrs, source in re.findall(
+                r"<script\b([^>]*)>([\s\S]*?)</script>", body
+            ):
+                if source and not re.search(r"\bsrc\s*=", attrs):
+                    digest = base64.b64encode(
+                        hashlib.sha256(source.encode()).digest()
+                    ).decode()
+                    assert f"'sha256-{digest}'" in actual_policy, "Script fuera de CSP"
     headers, _ = fetch("https", "/api/v1/auth/csrf/")
     assert re.search(r"set-cookie:.*; Secure", headers, re.IGNORECASE), (
         "Cookie CSRF no segura"
     )
-    print("TLS, 301, cabeceras en 2xx/4xx, nonce, cookies y forwarding: correctos.")
+    print(
+        "TLS, 301, cabeceras en 2xx/4xx, CSP hashes, cookies y forwarding: correctos."
+    )
 
 
 if __name__ == "__main__":

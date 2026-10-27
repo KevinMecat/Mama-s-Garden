@@ -75,8 +75,7 @@ def validate_env(values, template=TEMPLATE):
         "DJANGO_DEBUG": "False",
         "DJANGO_SETTINGS_MODULE": "config.settings.production",
         "DJANGO_ALLOWED_HOSTS": domain,
-        "DJANGO_CSRF_TRUSTED_ORIGINS": f"https://{domain}",
-        "NEXT_PUBLIC_SITE_URL": f"https://{domain}",
+        "DJANGO_CSRF_TRUSTED_ORIGINS": values.get("NEXT_PUBLIC_SITE_URL", ""),
         "API_INTERNAL_URL": "http://api:8000",
         "API_PORT": "8000",
         "WEB_PORT": "3000",
@@ -87,6 +86,14 @@ def validate_env(values, template=TEMPLATE):
         for key, expected_value in expected.items()
         if values.get(key) != expected_value
     )
+    if values.get("NEXT_PUBLIC_SITE_URL") not in {
+        f"https://{domain}",
+        "https://fincamamasgarden.com",
+        "https://www.fincamamasgarden.com",
+        "https://surco-finca.web.app",
+        "https://surco-finca.firebaseapp.com",
+    }:
+        errors.add("NEXT_PUBLIC_SITE_URL")
     for key, minimum in (("DJANGO_SECRET_KEY", 64), ("POSTGRES_PASSWORD", 32)):
         if not strong_secret(values.get(key, ""), minimum):
             errors.add(key)

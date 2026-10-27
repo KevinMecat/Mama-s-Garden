@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-client";
 import { getCsrfToken } from "@/lib/auth-api";
 import type {
   BulkAttendanceInput,
@@ -30,7 +31,7 @@ function firstError(value: unknown): string | undefined {
 
 async function request<T>(path: string, method: string, input?: unknown): Promise<T | null> {
   const csrfToken = await getCsrfToken();
-  const response = await fetch(`${PAYROLL_ROOT}${path}`, {
+  const response = await apiFetch(`${PAYROLL_ROOT}${path}`, {
     method,
     cache: "no-store",
     credentials: "include",
@@ -55,7 +56,7 @@ export const deleteEmployee = (id: number) =>
   request<never>(`/employees/${id}/`, "DELETE");
 
 export async function getAttendance(workDate: string): Promise<WorkEntry[]> {
-  const response = await fetch(`${PAYROLL_ROOT}/work-entries/?work_date=${workDate}`, {
+  const response = await apiFetch(`${PAYROLL_ROOT}/work-entries/?work_date=${workDate}`, {
     cache: "no-store",
     credentials: "include",
   });

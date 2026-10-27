@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/api-client";
 import type { FinancialTransaction } from "@/types/finance";
 
 const currencyFormatter = new Intl.NumberFormat("es-GT", {
@@ -35,7 +36,7 @@ function ReceiptLink({ transaction }: { transaction: FinancialTransaction }) {
 
   return (
     <a
-      href={receipt.file_url}
+      href={receipt.file_url.startsWith("/") ? apiUrl(receipt.file_url) : receipt.file_url}
       target="_blank"
       rel="noreferrer"
       className="font-semibold text-brand-secondary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"

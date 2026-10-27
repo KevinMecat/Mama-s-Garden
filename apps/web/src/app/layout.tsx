@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { connection } from "next/server";
 
 import { PwaRegistration } from "@/components/pwa-registration";
 
@@ -17,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://fincamamasgarden.com"),
   title: {
     default: "Finca Mama's Garden",
     template: "%s | Finca Mama's Garden",
@@ -47,8 +46,7 @@ export const viewport: Viewport = {
   themeColor: "#484927",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  await connection();
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"

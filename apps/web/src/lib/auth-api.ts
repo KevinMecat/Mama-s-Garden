@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-client";
 import type { AuthResponse, AuthUser } from "@/types/auth";
 
 const AUTH_ROOT = "/api/v1/auth";
@@ -24,7 +25,7 @@ async function getErrorMessage(response: Response) {
 }
 
 export async function getCsrfToken() {
-  const response = await fetch(`${AUTH_ROOT}/csrf/`, {
+  const response = await apiFetch(`${AUTH_ROOT}/csrf/`, {
     cache: "no-store",
     credentials: "include",
   });
@@ -39,7 +40,7 @@ export async function getCsrfToken() {
 
 export async function login(email: string, password: string): Promise<AuthUser> {
   const csrfToken = await getCsrfToken();
-  const response = await fetch(`${AUTH_ROOT}/login/`, {
+  const response = await apiFetch(`${AUTH_ROOT}/login/`, {
     method: "POST",
     cache: "no-store",
     credentials: "include",
@@ -59,7 +60,7 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 
 export async function logout() {
   const csrfToken = await getCsrfToken();
-  const response = await fetch(`${AUTH_ROOT}/logout/`, {
+  const response = await apiFetch(`${AUTH_ROOT}/logout/`, {
     method: "POST",
     cache: "no-store",
     credentials: "include",
@@ -74,7 +75,7 @@ export async function logout() {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const response = await fetch(`${AUTH_ROOT}/me/`, {
+  const response = await apiFetch(`${AUTH_ROOT}/me/`, {
     cache: "no-store",
     credentials: "include",
   });

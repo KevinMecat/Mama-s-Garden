@@ -38,9 +38,9 @@ jobs:
         run: docker compose --env-file .env.ci -f docker-compose.prod.yml build
       - name: Verify final image inventory and non-root identities
         run: |
-          docker run --rm --entrypoint node mamas-garden-web:local scripts/audit-production.mjs runtime
+          docker run --rm --entrypoint sh mamas-garden-web:local -c 'test -z "$(find /usr/share/nginx/html -name "*.map" -o -name node_modules -o -name package-lock.json)"'
           docker run --rm --entrypoint python mamas-garden-api:local /app/scripts/audit_python_runtime.py
-          test "$(docker image inspect mamas-garden-web:local --format '{{.Config.User}}')" = node
+          test "$(docker image inspect mamas-garden-web:local --format '{{.Config.User}}')" = 101:101
           test "$(docker image inspect mamas-garden-api:local --format '{{.Config.User}}')" = finca
           test "$(docker image inspect mamas-garden-proxy:local --format '{{.Config.User}}')" = 101:101
       - name: Start production stack with ephemeral PostgreSQL

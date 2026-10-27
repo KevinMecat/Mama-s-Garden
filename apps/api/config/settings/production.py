@@ -29,6 +29,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 MIDDLEWARE = [
     BASE_MIDDLEWARE[0],
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     *BASE_MIDDLEWARE[1:],
 ]
@@ -36,3 +37,17 @@ STORAGES = {
     **BASE_STORAGES,
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+
+# Explicit frontend origins only; credentials are never allowed with wildcard CORS.
+CORS_ALLOW_CREDENTIALS = True
+CORS_URLS_REGEX = r"^/api/.*$"
+CORS_ALLOWED_ORIGINS = [
+    "https://fincamamasgarden.com",
+    "https://www.fincamamasgarden.com",
+    "https://surco-finca.web.app",
+    "https://surco-finca.firebaseapp.com",
+]
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+# Required for credentials from the Firebase default domain to the future API.
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"

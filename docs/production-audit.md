@@ -263,3 +263,59 @@ Referencias oficiales:
 [Django SECURE_PROXY_SSL_HEADER](https://docs.djangoproject.com/en/5.2/ref/settings/#secure-proxy-ssl-header),
 [CSP Next.js](https://nextjs.org/docs/app/guides/content-security-policy),
 [Branch Protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
+
+
+## Anexo de sustitución de arquitectura — 26 de octubre de 2026
+
+Este anexo sustituye las conclusiones anteriores relativas al runtime Node,
+SSR, CSP con nonces y aceptación de cinco vulnerabilidades de desarrollo para
+el frontend publicado. Se autorizó convertir toda la aplicación a cliente
+estático y publicar con la API pendiente de despliegue.
+
+- Next.js exporta todas las pantallas; Django se consume desde el navegador mediante
+  `NEXT_PUBLIC_API_URL`. Vacío en el release: ninguna solicitud ni credencial se
+  envía a una API temporal. Login deshabilitado y panel con aviso de servicio pendiente.
+- Firebase Hosting publica únicamente `apps/web/out`; no contiene node_modules,
+  dependencias de desarrollo, secretos ni mapas de fuentes. El contenedor alternativo
+  también sirve exclusivamente estáticos con Nginx y usuario 101:101.
+- CSP usa hashes SHA-256 del HTML exportado; no requiere nonces ni unsafe-eval.
+  Se admite unsafe-inline exclusivamente en estilos por las necesidades de React/Recharts.
+- Auditoría completa npm y auditoría --omit=dev: cero hallazgos después de actualizar
+  el lockfile de forma compatible. DEV-2026-10-22-01 está RESUELTO; no hay excepción
+  activa ni aprobación de vulnerabilidades pendiente para esta cadena.
+- Build auditado: 405 mapas y 2 trazas sin módulos de desarrollo prohibidos;
+  preparación Hosting: 29 HTML y 29 hashes de scripts, mapas retirados antes del upload.
+- Backend: 35 pruebas correctas; Ruff y 5 pruebas del validador de entorno correctas.
+  Comprobación adicional de settings production: preflight CORS permitido/denegado,
+  credenciales, cookie CSRF Secure/SameSite=None correctos.
+- Navegador Edge real sobre el dominio publicado: inicio, login y ruta profunda
+  HTTP 200; hidratación sin errores, CSP aplicada, login deshabilitado y cero
+  solicitudes a la API sin configurar.
+- Cuenta CI sin claves permanentes, federación OIDC restringida al repositorio,
+  propietario, rama main y workflow exacto. Primer deploy de Actions pendiente de
+  integrar el workflow en main; el despliegue local live sí fue ejecutado.
+
+| Control del dominio real | Resultado |
+| --- | --- |
+| HTTP /login → HTTPS /login | 301 |
+| HTTPS /login, CA pública | 200, certificado validado |
+| HSTS | max-age=31536000; includeSubDomains; preload |
+| X-Frame-Options | DENY |
+| X-Content-Type-Options | nosniff |
+| Referrer-Policy | strict-origin-when-cross-origin |
+| CSP | hashes del build, origen de API parametrizado |
+| Dominio y www en Firebase | HOST_ACTIVE, OWNERSHIP_ACTIVE, CERT_ACTIVE |
+
+La cabecera preload expresa la política; no certifica inscripción del dominio
+al listado de preload de navegadores. Firebase aplica su propio max-age HSTS
+al dominio predeterminado web.app; el dominio personalizado tiene el valor requerido.
+
+**Alcance publicado:** frontend disponible en https://fincamamasgarden.com y
+https://surco-finca.web.app. La autenticación, datos y operaciones reales no están
+certificados de extremo a extremo hasta desplegar Django, configurar su origen
+HTTPS, recompilar y verificar las sesiones, CORS, CSRF y permisos con usuarios reales.
+Se conserva pendiente la aprobación operacional global anterior; no se inventa firma
+humana ni se certifica un backend inexistente.
+
+**Firma de ejecución técnica:** Codex, 26 de octubre de 2026; preparación y publicación
+frontend realizadas. Procedimiento reproducible: [firebase-hosting.md](firebase-hosting.md).

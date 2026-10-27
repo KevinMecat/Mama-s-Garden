@@ -33,6 +33,17 @@ class ProductionEnvironmentTests(unittest.TestCase):
                 reduced.pop(key)
                 self.assertIn(key, validate_env(reduced))
 
+    def test_separate_backend_and_frontend_domains(self):
+        values = fixture()
+        values["DOMAIN"] = "api.fincamamasgarden.com"
+        values["DJANGO_ALLOWED_HOSTS"] = values["DOMAIN"]
+        values["NEXT_PUBLIC_SITE_URL"] = "https://fincamamasgarden.com"
+        values["DJANGO_CSRF_TRUSTED_ORIGINS"] = values["NEXT_PUBLIC_SITE_URL"]
+        self.assertEqual(validate_env(values), [])
+        values["NEXT_PUBLIC_SITE_URL"] = "https://attacker.invalid"
+        values["DJANGO_CSRF_TRUSTED_ORIGINS"] = values["NEXT_PUBLIC_SITE_URL"]
+        self.assertIn("NEXT_PUBLIC_SITE_URL", validate_env(values))
+
     def test_weak_defaults_and_untrusted_origins(self):
         for key, value in (
             ("DJANGO_SECRET_KEY", "django-insecure-placeholder"),

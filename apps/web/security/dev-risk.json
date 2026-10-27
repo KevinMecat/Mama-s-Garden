@@ -17,5 +17,8 @@
     "build maps and traces contain none of these modules",
     "final image inventory contains none of these packages",
     "build receives no production secrets and runs on an ephemeral runner"
-  ]
+  ],
+  "status": "resolved",
+  "resolvedAt": "2026-10-26",
+  "resolution": "Compatible lockfile updates; full npm audit and production audit report zero findings. No exception is active."
 }

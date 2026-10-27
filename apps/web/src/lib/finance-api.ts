@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-client";
 import { getCsrfToken } from "@/lib/auth-api";
 import type { FinancialTransaction } from "@/types/finance";
 
@@ -29,7 +30,7 @@ async function getErrorMessage(response: Response) {
 
 export async function createFinancialTransaction(formData: FormData) {
   const csrfToken = await getCsrfToken();
-  const response = await fetch(`${TRANSACTIONS_ROOT}/`, {
+  const response = await apiFetch(`${TRANSACTIONS_ROOT}/`, {
     method: "POST",
     cache: "no-store",
     credentials: "include",

@@ -1,4 +1,4 @@
-const CACHE_NAME = "finca-static-v4";
+const CACHE_NAME = "finca-static-v5";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML carries a per-request CSP nonce and must never enter Cache Storage.
+  // Fetch HTML from the network to keep documents and deployment CSP in sync.
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).catch(() => caches.match("/offline.html")));
     return;

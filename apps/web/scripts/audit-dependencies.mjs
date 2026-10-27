@@ -1,9 +1,6 @@
-import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const risk = JSON.parse(fs.readFileSync("security/dev-risk.json", "utf8"));
-if (Date.now() >= Date.parse(risk.expires)) throw new Error("Excepción de desarrollo caducada.");
 function audit(extra = []) {
   const windows = process.platform === "win32";
   const npmCli = path.join(path.dirname(process.execPath), "node_modules/npm/bin/npm-cli.js");
@@ -19,12 +16,7 @@ if (audit(["--omit=dev"]).metadata.vulnerabilities.total !== 0) {
   throw new Error("Hallazgos en dependencias de producción: detener release.");
 }
 const full = audit();
-for (const [name, item] of Object.entries(full.vulnerabilities)) {
-  if (!risk.packages.includes(name)) throw new Error(`Hallazgo fuera del riesgo documentado: ${name}`);
-  for (const via of item.via) {
-    if (typeof via === "string" ? !risk.packages.includes(via) : via.url !== risk.advisory) {
-      throw new Error("Advisory nuevo: renovar revisión de riesgo antes de continuar.");
-    }
-  }
+if (full.metadata.vulnerabilities.total !== 0) {
+  throw new Error("Hallazgos en desarrollo: detener release y revisar dependencias.");
 }
-console.log(`Producción sin hallazgos; desarrollo limitado a la cadena documentada (${Object.keys(full.vulnerabilities).length} entradas). Aprobación humana: ${risk.businessApproval}.`);
+console.log("Auditoria completa y de produccion: cero vulnerabilidades; sin excepciones activas.");

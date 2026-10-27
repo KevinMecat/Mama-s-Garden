@@ -1,0 +1,57 @@
+name: firebase-hosting
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firebase-hosting-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SITE_URL: https://fincamamasgarden.com
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      BUILD_AUDIT_MAPS: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Build, audit and prepare static export
+        working-directory: apps/web
+        run: |
+          npm install --global npm@11.19.0
+          npm ci
+          npm test
+          npm run lint
+          npm run typecheck
+          node scripts/audit-dependencies.mjs
+          npm run build
+          node scripts/audit-production.mjs build
+          node scripts/prepare-hosting.mjs
+      - name: Install pinned deployment CLI before authentication
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: npm install --global firebase-tools@15.34.1
+      - name: Authenticate without a service account key
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          project_id: surco-finca
+          workload_identity_provider: projects/450724961922/locations/global/workloadIdentityPools/github-hosting/providers/github
+          service_account: github-hosting@surco-finca.iam.gserviceaccount.com
+      - name: Deploy to live Hosting
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: firebase deploy --config firebase.deploy.json --only hosting --project surco-finca --non-interactive
+    permissions:
+      contents: read
+      id-token: write
