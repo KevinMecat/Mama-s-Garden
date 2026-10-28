@@ -1108,6 +1108,7 @@ export function FirebaseWorkforceBoard({
           <ReviewForm
             task={reviewing}
             log={taskLog(reviewing)}
+            progressLogs={(data?.logs ?? []).filter((entry) => (data?.events ?? []).some((event) => event.taskId === reviewing.id && event.action === "progress" && event.id === entry.id))}
             busy={busy}
             error={error}
             submit={(action, observations, acceptedQuantity) =>
@@ -1371,12 +1372,14 @@ function CloseForm({
 function ReviewForm({
   task,
   log,
+  progressLogs,
   busy,
   error,
   submit,
 }: {
   task: WorkTask;
   log?: Loaded["logs"][number];
+  progressLogs: Loaded["logs"];
   busy: boolean;
   error: string;
   submit(
@@ -1402,6 +1405,7 @@ function ReviewForm({
       }}
     >
       <p className="text-sm">{log?.result}</p>
+      <p className="text-sm">Avances parciales: {progressLogs.reduce((sum, entry) => sum + (entry.quantity ?? 0), 0)} {task.unit} · {progressLogs.reduce((sum, entry) => sum + Object.values(entry.minutes).reduce((n, minutes) => n + minutes, 0), 0)} minutos-persona.</p>
       <p className="text-xs text-neutral-500">
         Criterio: {log?.criterionMet ? "Cumplido" : "No cumplido"} ·{" "}
         {Object.values(log?.minutes ?? {}).reduce((a, b) => a + b, 0)}{" "}
