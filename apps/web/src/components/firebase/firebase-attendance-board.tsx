@@ -1,6 +1,6 @@
 "use client";
 import { BusyIndicator } from "@/components/farm-loader";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarCheck,
   UserX,
@@ -15,6 +15,9 @@ import {
 import { PrivatePhoto } from "./private-photo";
 import { Modal, fincaDate } from "./firebase-workforce-board";
 import { fullName, text } from "@/lib/firebase-models";
+import { readWorkforce } from "@/lib/firebase-workforce";
+import { getWorkerDailyAvailability } from "@/lib/workforce-availability";
+import type { WorkTask } from "@/lib/firebase-workforce-domain";
 import type { CloudRow } from "@/lib/firebase-client";
 import type { AuthUser } from "@/types/auth";
 import {
@@ -66,6 +69,12 @@ export function FirebaseAttendanceBoard({
     [events, setEvents] = useState<CloudRow[] | null>(null);
   const locked = useRef(false),
     pending = useRef(new Map<string, string>());
+  const [availabilityTasks, setAvailabilityTasks] = useState<WorkTask[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    void readWorkforce(user).then((result) => { if (active) setAvailabilityTasks(result.tasks); }).catch(() => { if (active) setAvailabilityTasks(null); });
+    return () => { active = false; };
+  }, [user]);
   const canEdit = ["ADMIN", "MANAGER", "SUPERVISOR"].includes(user.role);
   const find = (workerId: string, day = date) =>
     rows.find((r) => r.workerId === workerId && r.date === day);
@@ -308,6 +317,10 @@ export function FirebaseAttendanceBoard({
                       {row ? attendanceStates[plan.status] : "Sin marcar"}
                     </span>
                   </div>
+                  {availabilityTasks && <p className="mt-3 text-xs text-neutral-500">{(() => {
+                    const available = getWorkerDailyAvailability(w.id, date, rows, availabilityTasks);
+                    return available.absent ? "No disponible" : `Disponibilidad estimada: ${available.availableHours.toFixed(1)} h${available.overallocatedHours ? ` · excede ${available.overallocatedHours.toFixed(1)} h` : ""}${!available.attendanceKnown || available.incomplete ? " · datos incompletos" : ""}`;
+                  })()}</p>}
                   <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <dt className="text-xs text-neutral-500">Entrada</dt>

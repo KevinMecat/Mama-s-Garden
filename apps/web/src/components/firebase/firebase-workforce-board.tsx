@@ -1,5 +1,6 @@
 "use client";
 import { FarmLoader } from "@/components/farm-loader";
+import { getWorkerDailyAvailability } from "@/lib/workforce-availability";
 import {
   useEffect,
   useRef,
@@ -953,6 +954,10 @@ export function FirebaseWorkforceBoard({
                     />
                     {fullName(w)}
                     {w.status !== "active" ? " · Inactivo" : ""}
+                    {(() => {
+                      const available = getWorkerDailyAvailability(w.id, editor.plan.dueDate, attendance, data?.tasks ?? [], { excludeTaskId: editor.task?.id });
+                      return <span className="text-neutral-500"> · {available.absent ? "No disponible" : `${available.availableHours.toFixed(1)} h disponibles${available.overallocatedHours ? ` · ${available.overallocatedHours.toFixed(1)} h excedidas` : ""}${!available.attendanceKnown || available.incomplete ? " · estimación incompleta" : ""}`}</span>;
+                    })()}
                   </label>
                 ))}
               </div>
