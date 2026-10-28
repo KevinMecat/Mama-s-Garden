@@ -90,7 +90,7 @@ jobs:
 
   workforce-browser:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -118,10 +118,13 @@ jobs:
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
           export PATH="$JAVA_HOME/bin:$PATH"
-          NEXT_PUBLIC_DATA_SOURCE=firebase NEXT_PUBLIC_API_URL='' NEXT_PUBLIC_FIREBASE_EMULATORS=1 npm run dev -- --hostname 127.0.0.1 --port 3004 > /tmp/workforce-next.log 2>&1 &
+          setsid env NEXT_PUBLIC_DATA_SOURCE=firebase NEXT_PUBLIC_API_URL='' NEXT_PUBLIC_FIREBASE_EMULATORS=1 npm run dev -- --hostname 127.0.0.1 --port 3004 > /tmp/workforce-next.log 2>&1 &
           next_pid=$!
-          trap 'kill "$next_pid" 2>/dev/null || true' EXIT
-          node -e 'for(let i=0;i<60;i++){try{if((await fetch("http://127.0.0.1:3004/login")).ok)process.exit(0)}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)' --input-type=module
+          trap 'kill -- "-$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          if ! node --input-type=module -e 'const deadline=Date.now()+120000; while(Date.now()<deadline){try{if((await fetch("http://127.0.0.1:3004/login",{signal:AbortSignal.timeout(3000)})).ok)process.exit(0)}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)'; then
+            tail -n 100 /tmp/workforce-next.log
+            exit 1
+          fi
           npx --yes firebase-tools@15.34.1 emulators:exec --project demo-workforce-browser --config ../../firebase/emulators.json --only firestore,auth,storage "npm run test:firebase-browser"
       - name: Verify exported planner worker in a browser
         working-directory: apps/web

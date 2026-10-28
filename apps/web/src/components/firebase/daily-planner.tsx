@@ -52,7 +52,7 @@ export function DailyPlanner({ user, date, workers, attendance, tasks }: { user:
   const solve = useCallback((model: ReturnType<typeof input>): Promise<Result> => {
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL("../../workers/daily-planner.worker.ts", import.meta.url));
-      const timer = window.setTimeout(() => { worker.terminate(); reject(Error("El cálculo excedió el límite de dos segundos.")); }, 1900);
+      const timer = window.setTimeout(() => { worker.terminate(); reject(Error("El cálculo excedió el límite de seis segundos.")); }, 6000);
       worker.onmessage = (event: MessageEvent<{ result?: Result; error?: string }>) => { window.clearTimeout(timer); worker.terminate(); if (event.data.result) resolve(event.data.result); else reject(Error(event.data.error || "Cálculo no disponible.")); };
       worker.onerror = () => { window.clearTimeout(timer); worker.terminate(); reject(Error("No se pudo iniciar el cálculo.")); };
       worker.postMessage(model);
