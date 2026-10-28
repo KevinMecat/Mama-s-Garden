@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, chore/environment-setup]
+    branches: [main, chore/environment-setup, feature/personal-kanban]
 permissions:
   contents: read
 jobs:
@@ -123,3 +123,8 @@ jobs:
           trap 'kill "$next_pid" 2>/dev/null || true' EXIT
           node -e 'for(let i=0;i<60;i++){try{if((await fetch("http://127.0.0.1:3004/login")).ok)process.exit(0)}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)' --input-type=module
           npx --yes firebase-tools@15.34.1 emulators:exec --project demo-workforce-browser --config ../../firebase/emulators.json --only firestore,auth,storage "npm run test:firebase-browser"
+      - name: Verify exported planner worker in a browser
+        working-directory: apps/web
+        run: |
+          npm run build
+          node scripts/test-static-planner-worker.mjs

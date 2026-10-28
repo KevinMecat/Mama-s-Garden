@@ -4,14 +4,14 @@
   "private": true,
   "packageManager": "npm@11.19.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "node scripts/build-info.mjs && next build",
+    "dev": "next dev --webpack",
+    "build": "node scripts/build-info.mjs && next build --webpack",
     "start": "firebase emulators:start --only hosting --config ../../firebase.deploy.json --project surco-finca",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node scripts/test-api-client.mjs && node scripts/test-firebase-models.mjs",
+    "test": "node scripts/test-api-client.mjs && node scripts/test-firebase-models.mjs && node scripts/test-workforce-availability.mjs && node scripts/test-workforce-review-total.mjs && node scripts/test-workforce-indicators.mjs && node scripts/test-planner-prototype.mjs && node scripts/test-daily-planner-worker.mjs && node scripts/test-project-cpm.mjs && node scripts/test-project-capacity.mjs && node scripts/test-workforce-alerts.mjs",
     "test:e2e": "playwright test",
-    "test:firestore": "node scripts/test-workforce-firestore.mjs",
+    "test:firestore": "node scripts/test-workforce-firestore.mjs && node scripts/test-competencies-firestore.mjs && node scripts/test-project-graph-firestore.mjs && node scripts/test-planner-apply-firestore.mjs",
     "test:firebase-browser": "node scripts/test-workforce-browser.mjs"
   },
   "dependencies": {
