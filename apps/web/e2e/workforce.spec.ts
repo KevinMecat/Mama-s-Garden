@@ -126,6 +126,9 @@ test("server conflict keeps card state, drag, duplication, connection retry and 
     assignees: [options.employees[0].id],
   });
   await page.reload();
+  // Reload resets the date filter to today; restore the fixture date before
+  // looking for the task so the test works on every calendar day.
+  await page.getByLabel("Fecha", { exact: true }).fill("2026-10-27");
   const card = page.locator("article").filter({
     has: page.getByRole("heading", { name: task.title, exact: true }),
   });
