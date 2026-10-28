@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import ts from "typescript";
+const compile = (path, resolve) => {
+  const out = {}, js = ts.transpileModule(fs.readFileSync(path, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  new Function("exports", "require", js)(out, resolve); return out;
+};
+const attendance = { isAbsence: (status) => ["absent", "excused", "leave", "sick", "rest"].includes(status) };
+const cpm = compile("src/lib/project-cpm.ts", () => ({}));
+const availability = compile("src/lib/workforce-availability.ts", () => attendance);
+const capacity = compile("src/lib/project-capacity.ts", (name) => name === "./project-cpm" ? cpm : name === "./firebase-attendance" ? attendance : availability);
+const task = { id: "a", project: "p", assignees: ["w"], dueDate: "2026-10-28", estimatedHours: 6, status: "todo", isCancelled: false };
+const other = { ...task, id: "b", project: "other", estimatedHours: 2 };
+const workers = [{ id: "w", status: "active" }];
+const marks = [{ workerId: "w", date: "2026-10-28", status: "present", breakMinutes: 60 }];
+const result = capacity.evaluateProjectCapacity("p", [task, other], workers, marks);
+assert.deepEqual(result.criticalTaskIds, ["a"]);
+assert.equal(result.estimates[0].estimatedDemandHours, 6);
+assert.equal(result.estimates[0].estimatedAvailableHours, 5);
+assert.equal(result.estimates[0].feasibility, "unknown");
+assert.equal(result.resourceCalendarVerified, false);
+assert.equal(capacity.evaluateProjectCapacity("p", [{ ...task, estimatedHours: null }], workers, marks).estimates[0].incomplete, true);
+assert.equal(capacity.evaluateProjectCapacity("p", [task], workers, []).estimates[0].incomplete, true);
+assert.equal(capacity.evaluateProjectCapacity("p", [task], workers, [{ ...marks[0], pendingConfirmation: true }]).estimates[0].incomplete, true);
+assert.equal(capacity.evaluateProjectCapacity("p", [task], [...workers, { id: "w2", status: "active" }], marks).estimates[0].incomplete, true);
+console.log("PASS project capacity: critical path, other commitments, missing data and unknown schedule feasibility.");

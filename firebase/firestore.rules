@@ -338,7 +338,7 @@ service cloud.firestore {
           || !t.assignees.hasAny(get(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds));
     }
     function taskKeys(t) {
-      return t.keys().hasOnly(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','autonomy','limitingTools','status','isBlocked','blockReason','isCancelled','cancelReason','revision','logCount','latestLogId','latestReviewId','lastOperationId','createdBy','updatedBy','createdAt','updatedAt','cumulativeReportedQuantity','lastProgressDelta','progressCount','acceptedQuantity'])
+      return t.keys().hasOnly(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','autonomy','limitingTools','status','isBlocked','blockReason','isCancelled','cancelReason','revision','logCount','latestLogId','latestReviewId','lastOperationId','createdBy','updatedBy','createdAt','updatedAt','cumulativeReportedQuantity','lastProgressDelta','progressCount','acceptedQuantity','dependencyTaskIds','plannedHoursByWorker','lastAppliedProposalId','planApprovedBy','planApprovedAt'])
         && t.isBlocked is bool && t.blockReason is string && t.blockReason.size() <= 2000
         && t.isCancelled is bool && t.cancelReason is string && t.cancelReason.size() <= 2000
         && t.status in ['todo','in_progress','review','done']
@@ -388,7 +388,14 @@ service cloud.firestore {
           || (action == 'cancel' && isAdmin() && b.isCancelled && b.cancelReason.size() > 0 && changed.hasOnly(common.concat(['isCancelled','cancelReason'])))
           || (!a.isBlocked && (
             (action == 'edit' && planner() && a.logCount == 0 && a.status in ['todo','in_progress'] && validPlan(b) && activeAssignments(b)
+              && (b.project == a.project || ((a.project == '' || !exists(/databases/$(database)/documents/workforce_project_graphs/$(a.project))) && (b.project == '' || !exists(/databases/$(database)/documents/workforce_project_graphs/$(b.project)))))
               && changed.hasOnly(common.concat(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','autonomy','limitingTools'])))
+            || (action == 'dependencies' && planner() && a.project != '' && b.project == a.project
+              && b.dependencyTaskIds is list && b.dependencyTaskIds.size() <= 20 && b.dependencyTaskIds.toSet().size() == b.dependencyTaskIds.size() && !(id in b.dependencyTaskIds)
+              && getAfter(/databases/$(database)/documents/workforce_project_graphs/$(a.project)).data.lastTaskId == id
+              && getAfter(/databases/$(database)/documents/workforce_project_graphs/$(a.project)).data.lastOperationId == b.lastOperationId
+              && getAfter(/databases/$(database)/documents/workforce_project_graphs/$(a.project)).data.edges[id] == b.dependencyTaskIds
+              && changed.hasOnly(common.concat(['dependencyTaskIds'])))
             || (action == 'start' && a.status == 'todo' && b.status == 'in_progress' && changed.hasOnly(common.concat(['status'])))
             || (action == 'submit' && a.status == 'in_progress' && b.status == 'review' && b.latestLogId == b.lastOperationId && b.logCount == a.logCount + 1
               && (planner() || (a.assignees.size() == 1 && a.assignees[0] == boundWorker()))
@@ -418,18 +425,23 @@ service cloud.firestore {
         && request.resource.data.revision == 1 && request.resource.data.logCount == 0
         && request.resource.data.get('cumulativeReportedQuantity',0) == 0 && request.resource.data.get('lastProgressDelta',0) == 0
         && request.resource.data.get('progressCount',0) == 0
+        && request.resource.data.get('dependencyTaskIds',[]) == []
         && !request.resource.data.keys().hasAny(['acceptedQuantity'])
+        && !request.resource.data.keys().hasAny(['plannedHoursByWorker','lastAppliedProposalId','planApprovedBy','planApprovedAt'])
         && request.resource.data.latestLogId == '' && request.resource.data.latestReviewId == ''
         && request.resource.data.createdBy == request.auth.uid && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
         && linkedEvent(request.resource.data,id,'create');
-      allow update: if validChange(id,resource.data,request.resource.data);
+      // Applying experimental proposals remains disabled until phantom-safe
+      // snapshot validation and complete constraint revalidation are in place.
+      allow update: if eventAfter(request.resource.data).action != 'apply_proposal' && validChange(id,resource.data,request.resource.data);
       allow delete: if false;
     }
     match /workforce_history/{id} {
       allow get: if activeUser() && (resource == null || canReadTask(resource.data));
       allow list: if canReadTask(resource.data);
       allow create: if activeUser() && request.resource.data.keys().hasOnly(['taskId','assignees','action','fromStatus','toStatus','reason','revision','actor','actorLabel','fingerprint','createdAt'])
+        && request.resource.data.action != 'apply_proposal'
         && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
         && request.resource.data.actorLabel is string && request.resource.data.actorLabel.size() > 0 && request.resource.data.actorLabel.size() <= 140
         && request.resource.data.fingerprint is string && request.resource.data.fingerprint.size() == 64
@@ -440,6 +452,11 @@ service cloud.firestore {
         && taskAfter(request.resource.data.taskId).status == request.resource.data.toStatus
         && (request.resource.data.action == 'create' ? request.resource.data.fromStatus == '' : request.resource.data.fromStatus == get(/databases/$(database)/documents/workforce_tasks/$(request.resource.data.taskId)).data.status);
       allow update, delete: if false;
+    }
+    match /workforce_plan_proposals/{id} {
+      allow get: if planner();
+      allow list: if false;
+      allow create, update, delete: if false;
     }
     match /workforce_logs/{id} {
       allow read: if canReadTask(resource.data);
@@ -455,6 +472,23 @@ service cloud.firestore {
         && validReview(request.resource.data,taskAfter(request.resource.data.taskId));
       allow update, delete: if false;
     }
+    // A single project graph serializes dependency edits. Clients validate cycles;
+    // Firestore Rules cannot traverse an arbitrary graph to prove acyclicity.
+    match /workforce_project_graphs/{projectId} {
+      allow get, list: if planner();
+      allow create, update: if planner() && exists(/databases/$(database)/documents/microbusinesses/$(projectId))
+        && request.resource.data.keys().hasOnly(['projectId','revision','edges','lastTaskId','lastOperationId','updatedBy','updatedAt'])
+        && request.resource.data.projectId == projectId && request.resource.data.edges is map
+        && request.resource.data.lastTaskId is string && request.resource.data.lastOperationId is string
+        && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1)
+        && (resource == null ? request.resource.data.edges.keys().hasOnly([request.resource.data.lastTaskId]) : request.resource.data.edges.diff(resource.data.edges).affectedKeys().hasOnly([request.resource.data.lastTaskId]))
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time
+        && taskAfter(request.resource.data.lastTaskId).project == projectId
+        && taskAfter(request.resource.data.lastTaskId).lastOperationId == request.resource.data.lastOperationId
+        && taskAfter(request.resource.data.lastTaskId).dependencyTaskIds == request.resource.data.edges[request.resource.data.lastTaskId]
+        && eventAfter(taskAfter(request.resource.data.lastTaskId)).action == 'dependencies';
+      allow delete: if false;
+    }
     match /workforce_accounts/{uid} {
       allow get: if activeUser() && (isAdmin() || request.auth.uid == uid);
       allow list: if isAdmin();
@@ -468,6 +502,39 @@ service cloud.firestore {
       allow read: if activeUser();
       allow create, update: if isAdmin() && request.resource.data.keys().hasOnly(['inactiveWorkerIds']) && request.resource.data.inactiveWorkerIds is list;
       allow delete: if false;
+    }
+    // Competencies are kept separately from historical personnel documents.
+    match /workforce_profiles/{workerId} {
+      allow get: if planner() || (isWorker() && boundWorker() == workerId);
+      allow list: if planner();
+      allow create, update: if planner()
+        && exists(/databases/$(database)/documents/workers/$(workerId))
+        && request.resource.data.keys().hasAll(['workerId','competencies','revision','lastOperationId','updatedBy','updatedAt'])
+        && request.resource.data.keys().hasOnly(['workerId','competencies','revision','lastOperationId','updatedBy','updatedAt'])
+        && request.resource.data.workerId == workerId
+        && request.resource.data.competencies is map && request.resource.data.competencies.size() <= 100
+        && request.resource.data.competencies.values().hasOnly(['autonomous','supervised'])
+        && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1)
+        && request.resource.data.lastOperationId is string && request.resource.data.lastOperationId.size() > 0
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/workforce_profile_history/$(request.resource.data.lastOperationId)).data.workerId == workerId
+        && getAfter(/databases/$(database)/documents/workforce_profile_history/$(request.resource.data.lastOperationId)).data.revision == request.resource.data.revision
+        && getAfter(/databases/$(database)/documents/workforce_profile_history/$(request.resource.data.lastOperationId)).data.competencies == request.resource.data.competencies;
+      allow delete: if false;
+    }
+    match /workforce_profile_history/{operationId} {
+      allow get: if planner();
+      allow list: if planner();
+      allow create: if planner()
+        && request.resource.data.keys().hasAll(['workerId','competencies','previousCompetencies','revision','actor','reason','createdAt'])
+        && request.resource.data.keys().hasOnly(['workerId','competencies','previousCompetencies','revision','actor','reason','createdAt'])
+        && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
+        && request.resource.data.previousCompetencies == (exists(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)) ? get(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.competencies : {})
+        && getAfter(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.lastOperationId == operationId
+        && getAfter(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.revision == request.resource.data.revision
+        && getAfter(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.competencies == request.resource.data.competencies;
+      allow update, delete: if false;
     }
     match /workforce_worker_adjustments/{id} {
       allow read: if planner() || (isWorker() && boundWorker() == id);

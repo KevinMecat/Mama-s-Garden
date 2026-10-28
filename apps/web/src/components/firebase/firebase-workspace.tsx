@@ -18,6 +18,8 @@ import {
   Camera,
 } from "lucide-react";
 import { FirebaseAttendanceBoard } from "./firebase-attendance-board";
+import { CompetencyProfileView } from "./competency-profile";
+import { FirebaseProjectTimeline } from "./firebase-project-timeline";
 import { FarmLoader, BusyIndicator } from "@/components/farm-loader";
 import { readAttendanceRevisions, mergeAttendance } from "@/lib/firebase-attendance";
 import type { AuthUser } from "@/types/auth";
@@ -304,6 +306,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
                   </dl>
                   <p className="mt-4 text-xs text-neutral-500">Perfil: {text(worker.profile) || text(worker.area) || "Sin registrar"}</p>
                   <WorkerActions user={user} worker={worker} changed={() => setRevision(value => value + 1)}/>
+                  <CompetencyProfileView user={user} workerId={worker.id} />
                   <details className="mt-4 border-t border-neutral-100 pt-3 text-xs">
                     <summary className="min-h-8 font-semibold text-emerald-700">
                       Ver historial salarial y períodos
@@ -603,6 +606,7 @@ function FirebaseWorkspaceContent({ user }: { user: AuthUser }) {
                 Solo movimientos vinculados expresamente a esta unidad.
               </p>
             </div>
+            {section === "projects" && <FirebaseProjectTimeline user={user} project={row} workers={workers} attendance={attendance} />}
           </article>
         ))}
         {!filtered.length && (
