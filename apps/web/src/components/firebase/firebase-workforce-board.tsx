@@ -1,6 +1,7 @@
 "use client";
 import { FarmLoader } from "@/components/farm-loader";
 import { getWorkerDailyAvailability } from "@/lib/workforce-availability";
+import { workerActivityIndicators } from "@/lib/workforce-indicators";
 import { accumulatedCrewQuantity } from "@/lib/workforce-review-total";
 import {
   useEffect,
@@ -672,6 +673,17 @@ export function FirebaseWorkforceBoard({
             <History size={18} />
             Historial de {person(filter)}
           </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {workerActivityIndicators(filter, data.tasks, data.logs, data.reviews, data.events).map((row) => (
+              <article key={JSON.stringify([row.activity, row.unit])} className="rounded-xl border border-neutral-200 p-3 text-xs">
+                <h3 className="font-semibold">{row.activity} · {row.unit}</h3>
+                <p className="mt-2">Horas dedicadas: {row.hours.toFixed(2)} · Retrabajos: {row.returns}</p>
+                <p className="mt-1">Aceptado individual: {row.individualAccepted} {row.unit} · Aceptado en cuadrilla: {row.crewAccepted} {row.unit} (compartido)</p>
+                <p className="mt-1">Rendimiento en tareas individuales: {row.individualRate === null ? "Sin horas registradas" : `${row.individualRate.toFixed(2)} ${row.unit}/h`}</p>
+                <p className="mt-1">Bloqueos cerrados: {(row.blockedMinutes / 60).toFixed(2)} h{row.unresolvedBlock ? " · bloqueo actual sin cierre" : ""}</p>
+              </article>
+            ))}
+          </div>
           <EventList
             events={data.events.filter((e) => e.assignees.includes(filter))}
             tasks={data.tasks}
