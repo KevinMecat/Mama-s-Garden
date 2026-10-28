@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import ts from "typescript";
+const compiled = ts.transpileModule(fs.readFileSync("src/lib/workforce-availability.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const moduleExports = {};
+new Function("exports", "require", compiled)(moduleExports, () => ({ isAbsence: (status) => ["absent", "excused", "leave", "sick", "rest"].includes(status) }));
+const { getWorkerDailyAvailability: availability } = moduleExports;
+const tasks = [{ id: "t1", dueDate: "2026-10-27", assignees: ["w1"], estimatedHours: 3, status: "todo", isCancelled: false }];
+assert.equal(availability("w1", "2026-10-27", [{ workerId: "w1", date: "2026-10-27", status: "present", breakMinutes: 60 }], tasks).availableHours, 4);
+assert.equal(availability("w1", "2026-10-27", [{ workerId: "w1", date: "2026-10-27", status: "leave" }], tasks).availableHours, 0);
+assert.equal(availability("w1", "2026-10-27", [], [{ ...tasks[0], estimatedHours: 10 }]).overallocatedHours, 2);
+assert.equal(availability("w1", "2026-10-27", [], tasks).attendanceKnown, false);
+assert.equal(availability("w1", "2026-10-27", [], [{ ...tasks[0], estimatedHours: null }]).incomplete, true);
+console.log("PASS availability estimates: breaks, leave, over-allocation and missing data.");

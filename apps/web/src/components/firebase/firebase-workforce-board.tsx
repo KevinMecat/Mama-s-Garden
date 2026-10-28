@@ -1,5 +1,10 @@
 "use client";
 import { FarmLoader } from "@/components/farm-loader";
+import { getWorkerDailyAvailability } from "@/lib/workforce-availability";
+import { workerActivityIndicators } from "@/lib/workforce-indicators";
+import { accumulatedCrewQuantity } from "@/lib/workforce-review-total";
+import { OperationalAlerts } from "./operational-alerts";
+import { DailyPlanner } from "./daily-planner";
 import {
   useEffect,
   useRef,
@@ -155,14 +160,23 @@ export function FirebaseWorkforceBoard({
     );
   const [closing, setClosing] = useState<WorkTask>(),
     [reviewing, setReviewing] = useState<WorkTask>();
+  const [closeMode, setCloseMode] = useState<"submit" | "progress">("submit");
   const [reasonAction, setReasonAction] = useState<{
     task: WorkTask;
     action: "block" | "unblock" | "cancel";
   }>();
   const [query, setQuery] = useState("");
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const locked = useRef(false),
     operations = useRef(new Map<string, string>());
   const manager = canPlan(user.role);
+  useEffect(() => {
+    const interval = window.setInterval(() => setClockNow(Date.now()), 60000);
+    return () => window.clearInterval(interval);
+  }, []);
+  const nowParts = new Intl.DateTimeFormat("en-GB", { timeZone: "America/Managua", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(clockNow);
+  const currentMinutes = Number(nowParts.find((part) => part.type === "hour")?.value ?? 0) * 60 + Number(nowParts.find((part) => part.type === "minute")?.value ?? 0);
   const refresh = async () => {
     const result = await readWorkforce(user);
     setData(result);
@@ -285,16 +299,16 @@ export function FirebaseWorkforceBoard({
     if (status === "in_progress" && task.status === "todo")
       void command(task, { action: "start" });
     else if (status === "review" && task.status === "in_progress")
-      setClosing(task);
+      { setCloseMode("submit"); setClosing(task); }
     else if (
       status === "done" &&
       task.status === "review" &&
-      user.role === "ADMIN"
+      manager
     )
       setReviewing(task);
     else
       setError(
-        "Usa el flujo Por hacer → En curso → Cierre → Revisión del Administrador. Para corregir un cierre, devuelve la tarea.",
+        "Usa el flujo Por hacer → En curso → Cierre → Revisión del Administrador o Encargado. Para corregir un cierre, devuelve la tarea.",
       );
   }
   function actions(task: WorkTask) {
@@ -317,16 +331,21 @@ export function FirebaseWorkforceBoard({
             <button
               disabled={busy}
               className="f-button f-primary"
-              onClick={() => setClosing(task)}
+              onClick={() => { setCloseMode("submit"); setClosing(task); }}
             >
               <Send size={14} />
               Registrar cierre
             </button>
           )}
+        {!task.isBlocked && !task.isCancelled && task.status === "in_progress" && (manager || task.assignees.length === 1) && (
+          <button disabled={busy} className="f-button" onClick={() => { setCloseMode("progress"); setClosing(task); }}>
+            Registrar avance del día
+          </button>
+        )}
         {!task.isBlocked &&
           !task.isCancelled &&
           task.status === "review" &&
-          user.role === "ADMIN" && (
+          manager && (
             <button
               disabled={busy}
               className="f-button f-primary"
@@ -446,6 +465,7 @@ export function FirebaseWorkforceBoard({
           <RefreshCw size={16} />
           <span className="sr-only">Actualizar tablero</span>
         </button>
+        {manager && <button className="f-button" disabled={!data || busy} onClick={() => setPlannerOpen(true)}>Proponer distribución</button>}
         {manager && (
           <button
             className="f-button f-primary"
@@ -464,6 +484,7 @@ export function FirebaseWorkforceBoard({
           {error}
         </p>
       )}
+      {data && <OperationalAlerts input={{ date: day || fincaDate(), today: fincaDate(), currentMinutes, workers, attendance, tasks: data.tasks, logs: data.logs, events: data.events }} onOpenTask={setSelected} canReadProjectGraphs={manager} />}
       {!data && !error && (
         <FarmLoader message="Cargando el trabajo registrado…" />
       )}
@@ -524,6 +545,10 @@ export function FirebaseWorkforceBoard({
                   .map((task) => {
                     const log = taskLog(task);
                     const accepted = taskReview(task);
+                    const progressIds = new Set(data?.events.filter((event) => event.taskId === task.id && event.action === "progress").map((event) => event.id));
+                    const progressLogs = data?.logs.filter((entry) => progressIds.has(entry.id)) ?? [];
+                    const progressHours = progressLogs.reduce((sum, entry) => sum + Object.values(entry.minutes).reduce((minutes, value) => minutes + value, 0), 0) / 60;
+                    const progressQuantity = progressLogs.reduce((sum, entry) => sum + (entry.quantity ?? 0), 0);
                     return (
                       <article
                         key={task.id}
@@ -569,6 +594,8 @@ export function FirebaseWorkforceBoard({
                         <p className="mt-2 text-[11px] text-neutral-500">
                           {task.dueDate}
                         </p>
+                        <p className="mt-2 text-xs text-neutral-500">{task.estimatedHours !== null ? `${task.estimatedHours} h por persona · ` : ""}{task.autonomy === "assisted" ? "Requiere acompañamiento" : task.autonomy === "independent" ? "Trabajo autónomo" : "Autonomía sin definir"}{task.limitingTools ? ` · ${task.limitingTools}` : ""}</p>
+                        {progressLogs.length > 0 && <p className="mt-2 text-xs text-neutral-500">Avances de cuadrilla: {task.targetQuantity !== null ? `${progressQuantity} ${task.unit} · ` : ""}{progressHours} horas-persona registradas</p>}
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           {task.assignees.map((id) => (
                             <span
@@ -658,6 +685,17 @@ export function FirebaseWorkforceBoard({
             <History size={18} />
             Historial de {person(filter)}
           </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {workerActivityIndicators(filter, data.tasks, data.logs, data.reviews, data.events).map((row) => (
+              <article key={JSON.stringify([row.activity, row.unit])} className="rounded-xl border border-neutral-200 p-3 text-xs">
+                <h3 className="font-semibold">{row.activity} · {row.unit}</h3>
+                <p className="mt-2">Horas dedicadas: {row.hours.toFixed(2)} · Retrabajos: {row.returns}</p>
+                <p className="mt-1">Aceptado individual: {row.individualAccepted} {row.unit} · Aceptado en cuadrilla: {row.crewAccepted} {row.unit} (compartido)</p>
+                <p className="mt-1">Rendimiento en tareas individuales: {row.individualRate === null ? "Sin horas registradas" : `${row.individualRate.toFixed(2)} ${row.unit}/h`}</p>
+                <p className="mt-1">Bloqueos cerrados: {(row.blockedMinutes / 60).toFixed(2)} h{row.unresolvedBlock ? " · bloqueo actual sin cierre" : ""}</p>
+              </article>
+            ))}
+          </div>
           <EventList
             events={data.events.filter((e) => e.assignees.includes(filter))}
             tasks={data.tasks}
@@ -941,6 +979,10 @@ export function FirebaseWorkforceBoard({
                     />
                     {fullName(w)}
                     {w.status !== "active" ? " · Inactivo" : ""}
+                    {(() => {
+                      const available = getWorkerDailyAvailability(w.id, editor.plan.dueDate, attendance, data?.tasks ?? [], { excludeTaskId: editor.task?.id });
+                      return <span className="text-neutral-500"> · {available.absent ? "No disponible" : `${available.availableHours.toFixed(1)} h disponibles${available.overallocatedHours ? ` · ${available.overallocatedHours.toFixed(1)} h excedidas` : ""}${!available.attendanceKnown || available.incomplete ? " · estimación incompleta" : ""}`}</span>;
+                    })()}
                   </label>
                 ))}
               </div>
@@ -1032,6 +1074,20 @@ export function FirebaseWorkforceBoard({
                 />
               </Field>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Autonomía requerida">
+                <select className="f-input" value={editor.plan.autonomy ?? ""} onChange={(e) => {
+                  const { autonomy: ignored, ...rest } = editor.plan;
+                  void ignored;
+                  setEditor({ ...editor, plan: e.target.value ? { ...rest, autonomy: e.target.value as NonNullable<Plan["autonomy"]> } : rest });
+                }}>
+                  <option value="">Sin definir</option><option value="independent">Independiente</option><option value="assisted">Requiere acompañamiento</option>
+                </select>
+              </Field>
+              <Field label="Herramientas limitantes">
+                <input className="f-input" maxLength={200} value={editor.plan.limitingTools ?? ""} onChange={(e) => setEditor({ ...editor, plan: { ...editor.plan, limitingTools: e.target.value } })} placeholder="Ej. motobomba" />
+              </Field>
+            </div>
             {warnings(editor.plan).map((w) => (
               <p
                 key={w}
@@ -1056,16 +1112,18 @@ export function FirebaseWorkforceBoard({
           </form>
         </Modal>
       )}
+      {plannerOpen && data && <Modal title="Proponer distribución" close={() => setPlannerOpen(false)}><DailyPlanner user={user} date={day || fincaDate()} workers={workers} attendance={attendance} tasks={data.tasks} /></Modal>}
       {closing && (
         <CloseForm
           task={closing}
+          mode={closeMode}
           busy={busy}
           error={error}
           close={() => {
             if (!busy) setClosing(undefined);
           }}
           submit={(value) =>
-            command(closing, { action: "submit", log: value }, () =>
+            command(closing, { action: closeMode, log: value }, () =>
               setClosing(undefined),
             )
           }
@@ -1081,12 +1139,13 @@ export function FirebaseWorkforceBoard({
           <ReviewForm
             task={reviewing}
             log={taskLog(reviewing)}
+            progressLogs={(data?.logs ?? []).filter((entry) => (data?.events ?? []).some((event) => event.taskId === reviewing.id && event.action === "progress" && event.id === entry.id))}
             busy={busy}
             error={error}
-            submit={(action, observations, acceptedQuantity) =>
+            submit={(action, observations, acceptedQuantity, legacyReportedQuantity) =>
               command(
                 reviewing,
-                { action, observations, acceptedQuantity },
+                { action, observations, acceptedQuantity, ...(legacyReportedQuantity !== undefined ? { legacyReportedQuantity } : {}) },
                 () => setReviewing(undefined),
               )
             }
@@ -1196,16 +1255,18 @@ function EventList({
 }
 function CloseForm({
   task,
+  mode,
   busy,
   error,
   close,
   submit,
 }: {
   task: WorkTask;
+  mode: "submit" | "progress";
   busy: boolean;
   error: string;
   close(): void;
-  submit(value: Extract<Command, { action: "submit" }>["log"]): Promise<void>;
+  submit(value: Extract<Command, { action: "submit" | "progress" }>["log"]): Promise<void>;
 }) {
   const [uploading, setUploading] = useState(false),
     [localError, setLocalError] = useState("");
@@ -1254,7 +1315,7 @@ function CloseForm({
     }
   }
   return (
-    <Modal title={`Cierre de jornada: ${task.title}`} close={close}>
+    <Modal title={`${mode === "progress" ? "Avance del día" : "Cierre de jornada"}: ${task.title}`} close={close}>
       <form onSubmit={(e) => void save(e)} className="space-y-4">
         <p className="rounded-lg bg-neutral-100 p-3 text-xs">
           Criterio: {task.acceptanceCriteria}.{" "}
@@ -1333,7 +1394,7 @@ function CloseForm({
         )}
         <button disabled={busy || uploading} className="f-button f-primary">
           <Send size={16} />
-          {busy || uploading ? "Guardando…" : "Enviar a revisión"}
+          {busy || uploading ? "Guardando…" : mode === "progress" ? "Guardar avance" : "Enviar a revisión"}
         </button>
       </form>
     </Modal>
@@ -1342,21 +1403,26 @@ function CloseForm({
 function ReviewForm({
   task,
   log,
+  progressLogs,
   busy,
   error,
   submit,
 }: {
   task: WorkTask;
   log?: Loaded["logs"][number];
+  progressLogs: Loaded["logs"];
   busy: boolean;
   error: string;
   submit(
     action: "accept" | "return",
     observations: string,
     quantity: number | null,
+    legacyReportedQuantity?: number,
   ): Promise<void>;
 }) {
   const [action, setAction] = useState<"accept" | "return">("accept");
+  const legacy = (task.cumulativeReportedQuantity === undefined || task.progressCount === undefined) && task.logCount > 1;
+  const maximum = legacy && progressLogs.length ? accumulatedCrewQuantity(progressLogs) : (task.progressCount ?? 0) > 0 ? (task.cumulativeReportedQuantity ?? 0) : (log?.quantity ?? 0);
   return (
     <form
       className="space-y-4"
@@ -1369,10 +1435,13 @@ function ReviewForm({
           task.targetQuantity === null || action === "return"
             ? null
             : Number(data.get("quantity")),
+          action === "accept" && legacy ? maximum : undefined,
         );
       }}
     >
       <p className="text-sm">{log?.result}</p>
+      {legacy && <p className="text-xs text-amber-700">Registro anterior: verifica el total contra el historial. Este total no puede comprobarse automáticamente en el servidor y requiere una observación de conciliación.</p>}
+      <p className="text-sm">Avances parciales: {accumulatedCrewQuantity(progressLogs)} {task.unit} · {progressLogs.reduce((sum, entry) => sum + Object.values(entry.minutes).reduce((n, minutes) => n + minutes, 0), 0)} minutos-persona.</p>
       <p className="text-xs text-neutral-500">
         Criterio: {log?.criterionMet ? "Cumplido" : "No cumplido"} ·{" "}
         {Object.values(log?.minutes ?? {}).reduce((a, b) => a + b, 0)}{" "}
@@ -1390,23 +1459,23 @@ function ReviewForm({
       </Field>
       {action === "accept" && task.targetQuantity !== null && (
         <Field
-          label={`Cantidad aceptada · máximo ${log?.quantity ?? 0} ${task.unit}`}
+          label={`Cantidad aceptada definitiva · máximo ${maximum} ${task.unit}`}
         >
           <input
             required
             name="quantity"
             type="number"
             min="0"
-            max={log?.quantity ?? 0}
+            max={maximum}
             step="any"
-            defaultValue={log?.quantity ?? 0}
+            defaultValue={maximum}
             className="f-input"
           />
         </Field>
       )}
       <Field label="Observaciones">
         <textarea
-          required={action === "return"}
+          required={action === "return" || (action === "accept" && legacy)}
           name="observations"
           maxLength={4000}
           className="f-input min-h-24"
@@ -1654,7 +1723,7 @@ export function WorkforceAccounts({
       )}
       <p className="text-xs text-neutral-500">
         <ListTodo size={14} className="mr-1 inline" />
-        Administrador: salarios, finanzas y aceptación. Encargado: planificación
+        Administrador: salarios y finanzas. Encargado: planificación y aceptación
         y cierres. Trabajador: tareas vinculadas y cierres individuales.
       </p>
     </section>

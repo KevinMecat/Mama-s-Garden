@@ -27,6 +27,8 @@ export type Plan = {
   targetQuantity: number | null;
   unit: string;
   estimatedHours: number | null;
+  autonomy?: "independent" | "assisted";
+  limitingTools?: string;
 };
 export type WorkTask = Plan & {
   id: string;
@@ -44,6 +46,10 @@ export type WorkTask = Plan & {
   updatedBy: string;
   createdAt?: unknown;
   updatedAt?: unknown;
+  cumulativeReportedQuantity?: number;
+  progressCount?: number;
+  lastProgressDelta?: number;
+  acceptedQuantity?: number | null;
 };
 export type WorkLog = {
   id: string;
@@ -86,17 +92,20 @@ export type Command =
   | { action: "edit"; plan: Plan }
   | { action: "block" | "unblock" | "cancel"; reason: string }
   | {
-      action: "submit";
+      action: "submit" | "progress";
       log: Omit<WorkLog, "id" | "taskId" | "createdBy" | "createdAt">;
     }
   | {
       action: "accept" | "return";
       observations: string;
       acceptedQuantity: number | null;
+      legacyReportedQuantity?: number;
     };
 export const canPlan = (role: UserRole) =>
   ["ADMIN", "MANAGER", "SUPERVISOR"].includes(role);
 export function validatePlan(plan: Plan) {
+  if ((plan.autonomy && !["independent", "assisted"].includes(plan.autonomy)) || (plan.limitingTools?.length ?? 0) > 200)
+    throw Error("Autonomía o herramientas inválidas.");
   if (
     !plan.title.trim() ||
     plan.title.length > 160 ||
@@ -182,6 +191,7 @@ export function transition(
         throw Error("Solo se puede iniciar una tarea por hacer.");
       next.status = "in_progress";
       break;
+    case "progress":
     case "submit": {
       if (task.status !== "in_progress")
         throw Error("Primero inicia la tarea.");
@@ -216,17 +226,21 @@ export function transition(
         throw Error("Registra la cantidad realizada, incluso si fue cero.");
       if (task.targetQuantity === null && log.quantity !== null)
         throw Error("Una labor de cumplimiento no lleva cantidad numérica.");
-      next.status = "review";
+      if (command.action === "submit") next.status = "review";
       next.logCount++;
       break;
     }
     case "accept":
     case "return":
-      if (role !== "ADMIN" || task.status !== "review" || !latestLog)
-        throw Error("Solo el Administrador revisa un cierre registrado.");
+      if (!manager || task.status !== "review" || !latestLog)
+        throw Error("Solo el Administrador o Encargado revisa un cierre registrado.");
       if (command.action === "return" && !command.observations.trim())
         throw Error("Explica qué debe corregirse.");
       if (command.action === "accept") {
+        const legacy = (task.cumulativeReportedQuantity === undefined || task.progressCount === undefined) && task.logCount > 1;
+        const maximum = legacy ? command.legacyReportedQuantity : (task.progressCount ?? 0) > 0 ? task.cumulativeReportedQuantity : latestLog.quantity;
+        if (legacy && (!Number.isFinite(maximum) || (maximum ?? -1) < 0 || !command.observations.trim()))
+          throw Error("La conciliación histórica requiere el total reportado y una observación.");
         if (!latestLog.criterionMet)
           throw Error(
             "No se puede aceptar un criterio incumplido. Devuelve la tarea.",
@@ -236,13 +250,16 @@ export function transition(
           (command.acceptedQuantity === null ||
             !Number.isFinite(command.acceptedQuantity) ||
             command.acceptedQuantity < 0 ||
-            command.acceptedQuantity > (latestLog.quantity ?? -1))
+            command.acceptedQuantity > (maximum ?? 0))
         )
           throw Error(
             "La cantidad aceptada debe estar entre cero y la cantidad reportada.",
           );
         if (task.targetQuantity === null && command.acceptedQuantity !== null)
           throw Error("Esta tarea se acepta por cumplimiento.");
+        if (command.acceptedQuantity !== null && command.acceptedQuantity !== (maximum ?? 0) && !command.observations.trim())
+          throw Error("Indica el motivo de la diferencia en la cantidad aceptada.");
+        next.acceptedQuantity = command.acceptedQuantity;
       }
       next.status = command.action === "accept" ? "done" : "in_progress";
       break;
@@ -263,6 +280,8 @@ export function duplicatePlan(task: WorkTask, dueDate: string): Plan {
     targetQuantity,
     unit,
     estimatedHours,
+    autonomy,
+    limitingTools,
   } = task;
   return {
     title,
@@ -278,6 +297,8 @@ export function duplicatePlan(task: WorkTask, dueDate: string): Plan {
     targetQuantity,
     unit,
     estimatedHours,
+    ...(autonomy ? { autonomy } : {}),
+    ...(limitingTools ? { limitingTools } : {}),
   };
 }
 export function productivity(

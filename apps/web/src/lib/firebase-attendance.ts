@@ -15,8 +15,13 @@ export const attendanceStates = {
   present: "Presente",
   late: "Tarde",
   half: "Medio día",
-  absent: "Ausente",
+  absent: "Ausencia injustificada",
+  excused: "Ausencia justificada",
+  leave: "Permiso",
+  sick: "Incapacidad médica",
+  rest: "Descanso programado",
 } as const;
+export const isAbsence = (status: string) => ["absent", "excused", "leave", "sick", "rest"].includes(status);
 export type AttendancePlan = {
   workerId: string;
   date: string;
@@ -83,7 +88,7 @@ export function validateAttendance(row: AttendancePlan) {
   )
     throw Error("El descanso debe ser de 0 a 240 minutos.");
   if (
-    row.status === "absent" &&
+    isAbsence(row.status) &&
     (row.arrival || row.departure || row.nextDay || row.breakMinutes)
   )
     throw Error("Una ausencia no puede registrar horas trabajadas.");
@@ -124,7 +129,14 @@ export async function readAttendanceRevisions(
       ? query(source, where("workerId", "==", workerId))
       : query(source),
   );
-  return rows.docs.map((row) => ({ ...row.data(), id: row.id }));
+  return rows.docs.map((row) => {
+    const data = row.data({ serverTimestamps: "estimate" });
+    const format = (value: unknown) => value instanceof Timestamp
+      ? new Intl.DateTimeFormat("en-GB", { timeZone: "America/Managua", hour: "2-digit", minute: "2-digit", hour12: false }).format(value.toDate())
+      : "";
+    const pendingConfirmation = row.metadata.hasPendingWrites;
+    return { ...data, arrival: pendingConfirmation && data.entryMode === "auto" ? "" : format(data.checkInServerAt) || data.arrival, departure: pendingConfirmation && data.entryMode === "auto" ? "" : format(data.checkOutServerAt) || data.departure, pendingConfirmation, id: row.id };
+  });
 }
 export async function attendanceHistory(
   user: AuthUser,
@@ -150,6 +162,7 @@ export async function saveAttendance(
   expectedRevision: number,
   operationId: string,
   reason: string,
+  automatic?: "arrival" | "departure",
 ) {
   if (!["ADMIN", "MANAGER", "SUPERVISOR"].includes(user.role))
     throw Error(
@@ -158,18 +171,19 @@ export async function saveAttendance(
   validateAttendance(row);
   if (!reason.trim())
     throw Error("Indica el motivo del registro o corrección.");
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Managua",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  if (row.date > today)
-    throw Error("No se permite registrar asistencia futura.");
+  if (!automatic) {
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Managua",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    if (row.date > today) throw Error("No se permite registrar asistencia futura.");
+  }
   const { db } = await firebaseClient(),
     id = `${row.workerId}_${row.date}`,
     weekStart = weekFor(row.date);
-  const encoded = JSON.stringify({ row, expectedRevision, reason });
+  const encoded = JSON.stringify({ row, expectedRevision, reason, automatic });
   const hash = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(encoded),
@@ -196,6 +210,9 @@ export async function saveAttendance(
       throw Error(
         "Otra persona actualizó la asistencia. Actualiza antes de guardar.",
       );
+    const old = previous.data();
+    if (automatic === "arrival" && (row.arrival || old?.checkInServerAt)) throw Error("La entrada ya fue registrada.");
+    if (automatic === "departure" && (!row.arrival || row.departure || old?.checkOutServerAt)) throw Error("Registra primero la entrada; no se sobrescribe una salida existente.");
     const payload = {
       ...row,
       weekStart,
@@ -205,6 +222,7 @@ export async function saveAttendance(
       lastOperationId: operationId,
       updatedBy: String(user.id),
       updatedAt: serverTimestamp(),
+      ...(automatic ? { entryMode: "auto", timezone: "America/Managua", ...(old?.checkInServerAt ? { checkInServerAt: old.checkInServerAt } : {}), ...(old?.checkOutServerAt ? { checkOutServerAt: old.checkOutServerAt } : {}), [automatic === "arrival" ? "checkInServerAt" : "checkOutServerAt"]: serverTimestamp() } : {}),
     };
     tx.set(record, payload);
     tx.set(history, {
@@ -216,6 +234,7 @@ export async function saveAttendance(
       actorLabel: user.first_name || user.role_label || "Cuenta autorizada",
       reason: reason.trim(),
       fingerprint,
+      previousValue: previous.exists() ? previous.data() : null,
       record: payload,
       createdAt: serverTimestamp(),
     });

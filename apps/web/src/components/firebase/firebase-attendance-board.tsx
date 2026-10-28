@@ -1,6 +1,6 @@
 "use client";
 import { BusyIndicator } from "@/components/farm-loader";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarCheck,
   UserX,
@@ -15,23 +15,20 @@ import {
 import { PrivatePhoto } from "./private-photo";
 import { Modal, fincaDate } from "./firebase-workforce-board";
 import { fullName, text } from "@/lib/firebase-models";
+import { readWorkforce } from "@/lib/firebase-workforce";
+import { getWorkerDailyAvailability } from "@/lib/workforce-availability";
+import type { WorkTask } from "@/lib/firebase-workforce-domain";
 import type { CloudRow } from "@/lib/firebase-client";
 import type { AuthUser } from "@/types/auth";
 import {
   attendanceStates,
+  isAbsence,
   workedMinutes,
   weekFor,
   saveAttendance,
   attendanceHistory,
   type AttendancePlan,
 } from "@/lib/firebase-attendance";
-const timeNow = () =>
-  new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Managua",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date());
 const duration = (n: number | null) =>
   n === null
     ? "Pendiente de cierre"
@@ -65,6 +62,12 @@ export function FirebaseAttendanceBoard({
     [events, setEvents] = useState<CloudRow[] | null>(null);
   const locked = useRef(false),
     pending = useRef(new Map<string, string>());
+  const [availabilityTasks, setAvailabilityTasks] = useState<WorkTask[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    void readWorkforce(user).then((result) => { if (active) setAvailabilityTasks(result.tasks); }).catch(() => { if (active) setAvailabilityTasks(null); });
+    return () => { active = false; };
+  }, [user]);
   const canEdit = ["ADMIN", "MANAGER", "SUPERVISOR"].includes(user.role);
   const find = (workerId: string, day = date) =>
     rows.find((r) => r.workerId === workerId && r.date === day);
@@ -99,17 +102,18 @@ export function FirebaseAttendanceBoard({
     revision: number,
     reason: string,
     close = false,
+    automatic?: "arrival" | "departure",
   ) {
     if (locked.current) return;
     locked.current = true;
     setBusy(true);
     setError("");
     setNotice("");
-    const key = JSON.stringify({ plan, revision, reason });
+    const key = JSON.stringify({ plan, revision, reason, automatic });
     const id = pending.current.get(key) ?? crypto.randomUUID();
     pending.current.set(key, id);
     try {
-      await saveAttendance(user, plan, revision, id, reason);
+      await saveAttendance(user, plan, revision, id, reason, automatic);
       await changed();
       pending.current.delete(key);
       if (close) setEditor(null);
@@ -139,10 +143,8 @@ export function FirebaseAttendanceBoard({
       plan.nextDay = false;
     }
     if (action === "arrival") {
-      plan.arrival = timeNow();
-      if (plan.status === "absent") plan.status = "present";
+      if (isAbsence(plan.status)) plan.status = "present";
     }
-    if (action === "departure") plan.departure = timeNow();
     void save(
       plan,
       row?.operationalRevision ? Number(row.revision) : 0,
@@ -153,6 +155,8 @@ export function FirebaseAttendanceBoard({
         : action === "arrival"
           ? "Entrada registrada ahora"
           : "Salida registrada ahora",
+      false,
+      action === "arrival" || action === "departure" ? action : undefined,
     );
   }
   function exportCsv() {
@@ -273,14 +277,14 @@ export function FirebaseAttendanceBoard({
           {notice}
         </p>
       )}
-      {busy && <p role="status" className="flex items-center gap-2 text-sm text-emerald-700"><BusyIndicator /> Guardando asistencia…</p>}
+      {busy && <p role="status" className="flex items-center gap-2 text-sm text-emerald-700"><BusyIndicator /> Sincronizando con servidor…</p>}
       {isClosed(date) && (
         <p role="status" className="surface-card p-4 text-sm">
           Período cerrado: asistencia protegida contra cambios.
         </p>
       )}
       {view === "day" && <p className="text-sm text-neutral-500">
-        {filtered.filter((w) => w.status === "active" && find(w.id) && find(w.id)?.status !== "absent").length} presentes · {filtered.filter((w) => w.status === "active" && find(w.id)?.status === "absent").length} ausentes · {filtered.filter((w) => w.status === "active" && !find(w.id)).length} sin marcar
+        {filtered.filter((w) => w.status === "active" && find(w.id) && !isAbsence(text(find(w.id)?.status))).length} presentes · {filtered.filter((w) => w.status === "active" && isAbsence(text(find(w.id)?.status))).length} ausentes · {filtered.filter((w) => w.status === "active" && !find(w.id)).length} sin marcar
       </p>}
       {view === "day" ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -289,7 +293,7 @@ export function FirebaseAttendanceBoard({
             .map((w) => {
               const row = find(w.id),
                 plan = draft(w, row),
-                disabled = busy || isClosed(date) || w.status !== "active";
+                disabled = busy || row?.pendingConfirmation === true || isClosed(date) || w.status !== "active";
               return (
                 <article className="surface-card p-5" key={w.id}>
                   <div className="flex flex-wrap items-start gap-3">
@@ -302,35 +306,39 @@ export function FirebaseAttendanceBoard({
                       </p>
                     </div>
                     <span
-                      className={`rounded-md px-2 py-1 text-[11px] font-semibold ${row?.status === "absent" ? "bg-red-50 text-red-700" : row ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}
+                      className={`rounded-md px-2 py-1 text-[11px] font-semibold ${isAbsence(plan.status) ? "bg-red-50 text-red-700" : row ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}
                     >
                       {row ? attendanceStates[plan.status] : "Sin marcar"}
                     </span>
                   </div>
+                  {availabilityTasks && <p className="mt-3 text-xs text-neutral-500">{(() => {
+                    const available = getWorkerDailyAvailability(w.id, date, rows, availabilityTasks);
+                    return available.absent ? "No disponible" : `Disponibilidad estimada: ${available.availableHours.toFixed(1)} h${available.overallocatedHours ? ` · excede ${available.overallocatedHours.toFixed(1)} h` : ""}${!available.attendanceKnown || available.incomplete ? " · datos incompletos" : ""}`;
+                  })()}</p>}
                   <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <dt className="text-xs text-neutral-500">Entrada</dt>
                       <dd className="mt-1 font-semibold tabular-nums">
-                        {plan.arrival || "—"}
+                        {row?.pendingConfirmation ? "Confirmando hora…" : plan.arrival || "—"}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-neutral-500">Salida</dt>
                       <dd className="mt-1 font-semibold tabular-nums">
-                        {plan.departure || "—"}
+                        {row?.pendingConfirmation ? "Confirmando hora…" : plan.departure || "—"}
                         {plan.nextDay ? " (+1 día)" : ""}
                       </dd>
                     </div>
                   </dl>
                   <p className="mt-4 flex items-center gap-2 text-xs text-neutral-500">
                     <Clock3 size={14} />
-                    {plan.status === "absent" ? "No aplica (ausencia)" : duration(workedMinutes(plan))} · descanso{" "}
+                    {isAbsence(plan.status) ? "No aplica (ausencia)" : plan.arrival && !plan.departure ? "Incidencia: salida pendiente" : duration(workedMinutes(plan))} · descanso{" "}
                     {plan.breakMinutes} min
                   </p>
                   {plan.note && <p className="mt-3 text-xs">{plan.note}</p>}
                   {canEdit && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {(!row || plan.status === "absent") && (
+                      {(!row || isAbsence(plan.status)) && (
                         <button
                           disabled={disabled}
                           className="f-button f-primary"
@@ -340,7 +348,7 @@ export function FirebaseAttendanceBoard({
                           Presente
                         </button>
                       )}
-                      {plan.status !== "absent" && (
+                      {!isAbsence(plan.status) && (
                         <button disabled={disabled || !!plan.arrival || !!plan.departure} className="f-button" onClick={() => quick(w, "absent")} title={plan.arrival || plan.departure ? "Usa Detalles y correcciones para cambiar una jornada con horas" : undefined}>
                           <UserX size={14} /> Ausente
                         </button>
@@ -427,7 +435,7 @@ export function FirebaseAttendanceBoard({
                     </td>
                     <td className="p-3">{plan.breakMinutes} min</td>
                     <td className="whitespace-nowrap p-3">
-                      {plan.status === "absent" ? "No aplica (ausencia)" : duration(workedMinutes(plan))}
+                      {isAbsence(plan.status) ? "No aplica (ausencia)" : duration(workedMinutes(plan))}
                     </td>
                     <td className="p-3">{plan.justified ? "Sí" : "No"}</td>
                     <td className="p-3">{plan.note}</td>
@@ -479,7 +487,7 @@ export function FirebaseAttendanceBoard({
                     plan: {
                       ...editor.plan,
                       status: e.target.value as AttendancePlan["status"],
-                      ...(e.target.value === "absent"
+                      ...(isAbsence(e.target.value)
                         ? {
                             arrival: "",
                             departure: "",
@@ -507,7 +515,7 @@ export function FirebaseAttendanceBoard({
                     aria-label={
                       key === "arrival" ? "Hora de entrada" : "Hora de salida"
                     }
-                    disabled={editor.plan.status === "absent"}
+                    disabled={isAbsence(editor.plan.status)}
                     className="f-input"
                     value={editor.plan[key]}
                     onChange={(e) =>
@@ -524,7 +532,7 @@ export function FirebaseAttendanceBoard({
               Descanso no trabajado (minutos)
               <input
                 aria-label="Minutos de descanso"
-                disabled={editor.plan.status === "absent"}
+                disabled={isAbsence(editor.plan.status)}
                 className="f-input"
                 type="number"
                 min="0"
@@ -545,7 +553,7 @@ export function FirebaseAttendanceBoard({
             <label className="flex min-h-10 items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                disabled={editor.plan.status === "absent"}
+                disabled={isAbsence(editor.plan.status)}
                 checked={editor.plan.nextDay}
                 onChange={(e) =>
                   setEditor({
@@ -596,7 +604,7 @@ export function FirebaseAttendanceBoard({
               />
             </label>
             <p className="text-xs text-neutral-500">
-              Tiempo neto: {editor.plan.status === "absent" ? "No aplica (ausencia)" : duration(workedMinutes(editor.plan))}. Los registros
+              Tiempo neto: {isAbsence(editor.plan.status) ? "No aplica (ausencia)" : duration(workedMinutes(editor.plan))}. Los registros
               originales e historial se conservan.
             </p>
             {error && (
@@ -616,6 +624,7 @@ export function FirebaseAttendanceBoard({
           <ol className="space-y-4">
             {events.map((event) => {
               const record = event.record as AttendancePlan;
+              const previous = event.previousValue as AttendancePlan | null | undefined;
               return (
                 <li
                   key={event.id}
@@ -628,6 +637,7 @@ export function FirebaseAttendanceBoard({
                     {attendanceStates[record.status]} · {record.arrival || "—"}{" "}
                     → {record.departure || "—"}
                   </p>
+                  {previous && <p className="mt-2">Antes: {previous.arrival || "—"} → {previous.departure || "—"} · Ahora: {record.arrival || "—"} → {record.departure || "—"}</p>}
                   <p className="mt-2">{text(event.reason)}</p>
                 </li>
               );
@@ -651,7 +661,7 @@ function ManualHours({ plan, disabled, onSave }: { plan: AttendancePlan; disable
   const [nextDay, setNextDay] = useState(plan.nextDay);
   return <form className="w-full space-y-3 rounded-xl border border-neutral-200 p-3" onSubmit={(event) => {
     event.preventDefault();
-    void onSave({ ...plan, arrival, departure, nextDay, status: arrival && plan.status === "absent" ? "present" : plan.status });
+    void onSave({ ...plan, arrival, departure, nextDay, status: arrival && isAbsence(plan.status) ? "present" : plan.status });
   }}>
     <div className="grid grid-cols-2 gap-3">
       <label className="text-xs">Hora de entrada<input aria-label="Entrada manual" className="f-input mt-1 w-full" type="time" value={arrival} disabled={disabled} onChange={(e) => { setArrival(e.target.value); if (!e.target.value) setNextDay(false); }} /></label>

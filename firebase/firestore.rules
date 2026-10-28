@@ -327,7 +327,9 @@ service cloud.firestore {
         && t.acceptanceCriteria is string && t.acceptanceCriteria.size() > 0 && t.acceptanceCriteria.size() <= 2000
         && (t.targetQuantity == null || (t.targetQuantity is number && t.targetQuantity > 0 && t.targetQuantity <= 1000000000 && t.unit.size() > 0))
         && t.unit is string && t.unit.size() <= 60
-        && (t.estimatedHours == null || (t.estimatedHours is number && t.estimatedHours > 0 && t.estimatedHours <= 24));
+        && (t.estimatedHours == null || (t.estimatedHours is number && t.estimatedHours > 0 && t.estimatedHours <= 24))
+        && t.get('autonomy','independent') in ['independent','assisted']
+        && t.get('limitingTools','') is string && t.get('limitingTools','').size() <= 200;
     }
     function activeAssignments(t) {
       return assignedActive(t.assignees, 0) && assignedActive(t.assignees, 1) && assignedActive(t.assignees, 2)
@@ -336,7 +338,7 @@ service cloud.firestore {
           || !t.assignees.hasAny(get(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds));
     }
     function taskKeys(t) {
-      return t.keys().hasOnly(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','status','isBlocked','blockReason','isCancelled','cancelReason','revision','logCount','latestLogId','latestReviewId','lastOperationId','createdBy','updatedBy','createdAt','updatedAt'])
+      return t.keys().hasOnly(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','autonomy','limitingTools','status','isBlocked','blockReason','isCancelled','cancelReason','revision','logCount','latestLogId','latestReviewId','lastOperationId','createdBy','updatedBy','createdAt','updatedAt','cumulativeReportedQuantity','lastProgressDelta','progressCount','acceptedQuantity','dependencyTaskIds','plannedHoursByWorker','lastAppliedProposalId','planApprovedBy','planApprovedAt'])
         && t.isBlocked is bool && t.blockReason is string && t.blockReason.size() <= 2000
         && t.isCancelled is bool && t.cancelReason is string && t.cancelReason.size() <= 2000
         && t.status in ['todo','in_progress','review','done']
@@ -362,13 +364,17 @@ service cloud.firestore {
     }
     function validReview(r, t) {
       let l = get(/databases/$(database)/documents/workforce_logs/$(r.logId)).data;
-      return r.keys().hasOnly(['taskId','assignees','logId','accepted','acceptedQuantity','observations','createdBy','createdAt'])
+      return r.keys().hasOnly(['taskId','assignees','logId','accepted','acceptedQuantity','observations','createdBy','createdAt','legacyReportedQuantity'])
         && r.assignees == t.assignees && r.logId == t.latestLogId && l.taskId == r.taskId
         && r.createdBy == request.auth.uid && r.createdAt == request.time && r.accepted is bool
         && r.observations is string && r.observations.size() <= 4000
         && ((!r.accepted && r.observations.size() > 0 && r.acceptedQuantity == null)
           || (r.accepted && l.criterionMet && ((t.targetQuantity == null && r.acceptedQuantity == null)
-            || (t.targetQuantity != null && r.acceptedQuantity is number && r.acceptedQuantity >= 0 && r.acceptedQuantity <= l.quantity))));
+            || (t.targetQuantity != null && r.acceptedQuantity is number && r.acceptedQuantity >= 0 &&
+              ((t.keys().hasAll(['cumulativeReportedQuantity','progressCount']) || t.logCount <= 1)
+                ? (r.acceptedQuantity <= (t.get('progressCount',0) > 0 ? t.cumulativeReportedQuantity : l.quantity)
+                  && (r.acceptedQuantity == (t.get('progressCount',0) > 0 ? t.cumulativeReportedQuantity : l.quantity) || r.observations.size() > 0))
+                : (r.get('legacyReportedQuantity',null) is number && r.legacyReportedQuantity >= 0 && r.acceptedQuantity <= r.legacyReportedQuantity && r.observations.size() > 0))))));
     }
     function validChange(id, a, b) {
       let changed = b.diff(a).affectedKeys();
@@ -382,16 +388,32 @@ service cloud.firestore {
           || (action == 'cancel' && isAdmin() && b.isCancelled && b.cancelReason.size() > 0 && changed.hasOnly(common.concat(['isCancelled','cancelReason'])))
           || (!a.isBlocked && (
             (action == 'edit' && planner() && a.logCount == 0 && a.status in ['todo','in_progress'] && validPlan(b) && activeAssignments(b)
-              && changed.hasOnly(common.concat(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours'])))
+              && (b.project == a.project || ((a.project == '' || !exists(/databases/$(database)/documents/workforce_project_graphs/$(a.project))) && (b.project == '' || !exists(/databases/$(database)/documents/workforce_project_graphs/$(b.project)))))
+              && changed.hasOnly(common.concat(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','autonomy','limitingTools'])))
+            || (action == 'dependencies' && planner() && a.project != '' && b.project == a.project
+              && b.dependencyTaskIds is list && b.dependencyTaskIds.size() <= 20 && b.dependencyTaskIds.toSet().size() == b.dependencyTaskIds.size() && !(id in b.dependencyTaskIds)
+              && getAfter(/databases/$(database)/documents/workforce_project_graphs/$(a.project)).data.lastTaskId == id
+              && getAfter(/databases/$(database)/documents/workforce_project_graphs/$(a.project)).data.lastOperationId == b.lastOperationId
+              && getAfter(/databases/$(database)/documents/workforce_project_graphs/$(a.project)).data.edges[id] == b.dependencyTaskIds
+              && changed.hasOnly(common.concat(['dependencyTaskIds'])))
             || (action == 'start' && a.status == 'todo' && b.status == 'in_progress' && changed.hasOnly(common.concat(['status'])))
             || (action == 'submit' && a.status == 'in_progress' && b.status == 'review' && b.latestLogId == b.lastOperationId && b.logCount == a.logCount + 1
               && (planner() || (a.assignees.size() == 1 && a.assignees[0] == boundWorker()))
               && validLog(getAfter(/databases/$(database)/documents/workforce_logs/$(b.latestLogId)).data,b)
               && changed.hasOnly(common.concat(['status','latestLogId','logCount'])))
-            || (action in ['accept','return'] && isAdmin() && a.status == 'review' && b.status == (action == 'accept' ? 'done' : 'in_progress')
+            || (action == 'progress' && a.status == 'in_progress' && b.status == 'in_progress' && b.latestLogId == b.lastOperationId && b.logCount == a.logCount + 1
+              && (planner() || (a.assignees.size() == 1 && a.assignees[0] == boundWorker()))
+              && validLog(getAfter(/databases/$(database)/documents/workforce_logs/$(b.latestLogId)).data,b)
+              && (a.keys().hasAll(['cumulativeReportedQuantity','progressCount']) || a.logCount == 0)
+              && b.lastProgressDelta == (getAfter(/databases/$(database)/documents/workforce_logs/$(b.latestLogId)).data.quantity == null ? 0 : getAfter(/databases/$(database)/documents/workforce_logs/$(b.latestLogId)).data.quantity)
+              && b.cumulativeReportedQuantity == a.get('cumulativeReportedQuantity',0) + b.lastProgressDelta
+              && b.progressCount == a.get('progressCount',0) + 1
+              && changed.hasOnly(common.concat(['latestLogId','logCount','lastProgressDelta','cumulativeReportedQuantity','progressCount'])))
+            || (action in ['accept','return'] && planner() && a.status == 'review' && b.status == (action == 'accept' ? 'done' : 'in_progress')
               && b.latestReviewId == b.lastOperationId && getAfter(/databases/$(database)/documents/workforce_reviews/$(b.latestReviewId)).data.accepted == (action == 'accept')
               && validReview(getAfter(/databases/$(database)/documents/workforce_reviews/$(b.latestReviewId)).data,b)
-              && changed.hasOnly(common.concat(['status','latestReviewId'])))
+              && (action != 'accept' || b.get('acceptedQuantity',null) == getAfter(/databases/$(database)/documents/workforce_reviews/$(b.latestReviewId)).data.acceptedQuantity)
+              && changed.hasOnly(common.concat(['status','latestReviewId','acceptedQuantity'])))
           )));
     }
     match /workforce_tasks/{id} {
@@ -401,17 +423,25 @@ service cloud.firestore {
         && request.resource.data.status == 'todo' && !request.resource.data.isBlocked && !request.resource.data.isCancelled
         && request.resource.data.blockReason == '' && request.resource.data.cancelReason == ''
         && request.resource.data.revision == 1 && request.resource.data.logCount == 0
+        && request.resource.data.get('cumulativeReportedQuantity',0) == 0 && request.resource.data.get('lastProgressDelta',0) == 0
+        && request.resource.data.get('progressCount',0) == 0
+        && request.resource.data.get('dependencyTaskIds',[]) == []
+        && !request.resource.data.keys().hasAny(['acceptedQuantity'])
+        && !request.resource.data.keys().hasAny(['plannedHoursByWorker','lastAppliedProposalId','planApprovedBy','planApprovedAt'])
         && request.resource.data.latestLogId == '' && request.resource.data.latestReviewId == ''
         && request.resource.data.createdBy == request.auth.uid && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
         && linkedEvent(request.resource.data,id,'create');
-      allow update: if validChange(id,resource.data,request.resource.data);
+      // Applying experimental proposals remains disabled until phantom-safe
+      // snapshot validation and complete constraint revalidation are in place.
+      allow update: if eventAfter(request.resource.data).action != 'apply_proposal' && validChange(id,resource.data,request.resource.data);
       allow delete: if false;
     }
     match /workforce_history/{id} {
       allow get: if activeUser() && (resource == null || canReadTask(resource.data));
       allow list: if canReadTask(resource.data);
       allow create: if activeUser() && request.resource.data.keys().hasOnly(['taskId','assignees','action','fromStatus','toStatus','reason','revision','actor','actorLabel','fingerprint','createdAt'])
+        && request.resource.data.action != 'apply_proposal'
         && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
         && request.resource.data.actorLabel is string && request.resource.data.actorLabel.size() > 0 && request.resource.data.actorLabel.size() <= 140
         && request.resource.data.fingerprint is string && request.resource.data.fingerprint.size() == 64
@@ -423,19 +453,41 @@ service cloud.firestore {
         && (request.resource.data.action == 'create' ? request.resource.data.fromStatus == '' : request.resource.data.fromStatus == get(/databases/$(database)/documents/workforce_tasks/$(request.resource.data.taskId)).data.status);
       allow update, delete: if false;
     }
+    match /workforce_plan_proposals/{id} {
+      allow get: if planner();
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
     match /workforce_logs/{id} {
       allow read: if canReadTask(resource.data);
       allow create: if activeUser() && taskAfter(request.resource.data.taskId).latestLogId == id
-        && taskAfter(request.resource.data.taskId).lastOperationId == id && taskAfter(request.resource.data.taskId).status == 'review'
+        && taskAfter(request.resource.data.taskId).lastOperationId == id && taskAfter(request.resource.data.taskId).status in ['review','in_progress']
         && validLog(request.resource.data,taskAfter(request.resource.data.taskId));
       allow update, delete: if false;
     }
     match /workforce_reviews/{id} {
       allow read: if canReadTask(resource.data);
-      allow create: if isAdmin() && taskAfter(request.resource.data.taskId).latestReviewId == id
+      allow create: if planner() && taskAfter(request.resource.data.taskId).latestReviewId == id
         && taskAfter(request.resource.data.taskId).lastOperationId == id
         && validReview(request.resource.data,taskAfter(request.resource.data.taskId));
       allow update, delete: if false;
+    }
+    // A single project graph serializes dependency edits. Clients validate cycles;
+    // Firestore Rules cannot traverse an arbitrary graph to prove acyclicity.
+    match /workforce_project_graphs/{projectId} {
+      allow get, list: if planner();
+      allow create, update: if planner() && exists(/databases/$(database)/documents/microbusinesses/$(projectId))
+        && request.resource.data.keys().hasOnly(['projectId','revision','edges','lastTaskId','lastOperationId','updatedBy','updatedAt'])
+        && request.resource.data.projectId == projectId && request.resource.data.edges is map
+        && request.resource.data.lastTaskId is string && request.resource.data.lastOperationId is string
+        && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1)
+        && (resource == null ? request.resource.data.edges.keys().hasOnly([request.resource.data.lastTaskId]) : request.resource.data.edges.diff(resource.data.edges).affectedKeys().hasOnly([request.resource.data.lastTaskId]))
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time
+        && taskAfter(request.resource.data.lastTaskId).project == projectId
+        && taskAfter(request.resource.data.lastTaskId).lastOperationId == request.resource.data.lastOperationId
+        && taskAfter(request.resource.data.lastTaskId).dependencyTaskIds == request.resource.data.edges[request.resource.data.lastTaskId]
+        && eventAfter(taskAfter(request.resource.data.lastTaskId)).action == 'dependencies';
+      allow delete: if false;
     }
     match /workforce_accounts/{uid} {
       allow get: if activeUser() && (isAdmin() || request.auth.uid == uid);
@@ -450,6 +502,39 @@ service cloud.firestore {
       allow read: if activeUser();
       allow create, update: if isAdmin() && request.resource.data.keys().hasOnly(['inactiveWorkerIds']) && request.resource.data.inactiveWorkerIds is list;
       allow delete: if false;
+    }
+    // Competencies are kept separately from historical personnel documents.
+    match /workforce_profiles/{workerId} {
+      allow get: if planner() || (isWorker() && boundWorker() == workerId);
+      allow list: if planner();
+      allow create, update: if planner()
+        && exists(/databases/$(database)/documents/workers/$(workerId))
+        && request.resource.data.keys().hasAll(['workerId','competencies','revision','lastOperationId','updatedBy','updatedAt'])
+        && request.resource.data.keys().hasOnly(['workerId','competencies','revision','lastOperationId','updatedBy','updatedAt'])
+        && request.resource.data.workerId == workerId
+        && request.resource.data.competencies is map && request.resource.data.competencies.size() <= 100
+        && request.resource.data.competencies.values().hasOnly(['autonomous','supervised'])
+        && request.resource.data.revision == (resource == null ? 1 : resource.data.revision + 1)
+        && request.resource.data.lastOperationId is string && request.resource.data.lastOperationId.size() > 0
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/workforce_profile_history/$(request.resource.data.lastOperationId)).data.workerId == workerId
+        && getAfter(/databases/$(database)/documents/workforce_profile_history/$(request.resource.data.lastOperationId)).data.revision == request.resource.data.revision
+        && getAfter(/databases/$(database)/documents/workforce_profile_history/$(request.resource.data.lastOperationId)).data.competencies == request.resource.data.competencies;
+      allow delete: if false;
+    }
+    match /workforce_profile_history/{operationId} {
+      allow get: if planner();
+      allow list: if planner();
+      allow create: if planner()
+        && request.resource.data.keys().hasAll(['workerId','competencies','previousCompetencies','revision','actor','reason','createdAt'])
+        && request.resource.data.keys().hasOnly(['workerId','competencies','previousCompetencies','revision','actor','reason','createdAt'])
+        && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
+        && request.resource.data.previousCompetencies == (exists(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)) ? get(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.competencies : {})
+        && getAfter(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.lastOperationId == operationId
+        && getAfter(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.revision == request.resource.data.revision
+        && getAfter(/databases/$(database)/documents/workforce_profiles/$(request.resource.data.workerId)).data.competencies == request.resource.data.competencies;
+      allow update, delete: if false;
     }
     match /workforce_worker_adjustments/{id} {
       allow read: if planner() || (isWorker() && boundWorker() == id);
@@ -480,9 +565,13 @@ service cloud.firestore {
       return string(t.year()) + '-' + (t.month() < 10 ? '0' : '') + string(t.month()) + '-' + (t.day() < 10 ? '0' : '') + string(t.day());
     }
     function attendanceClock(t) { return int(t.split(':')[0]) * 60 + int(t.split(':')[1]); }
+    function attendanceServerClock(t) {
+      let local = t - duration.value(6,'h');
+      return (local.hours() < 10 ? '0' : '') + string(local.hours()) + ':' + (local.minutes() < 10 ? '0' : '') + string(local.minutes());
+    }
     function validOperationalAttendance(a, id) {
       let total = a.arrival != '' && a.departure != '' ? attendanceClock(a.departure) - attendanceClock(a.arrival) + (a.nextDay ? 1440 : 0) - a.breakMinutes : 0;
-      return a.keys().hasOnly(['workerId','date','weekStart','status','arrival','departure','nextDay','breakMinutes','justified','note','day','week','revision','lastOperationId','updatedBy','updatedAt'])
+      return a.keys().hasOnly(['workerId','date','weekStart','status','arrival','departure','nextDay','breakMinutes','justified','note','day','week','revision','lastOperationId','updatedBy','updatedAt','entryMode','timezone','checkInServerAt','checkOutServerAt'])
         && a.workerId is string && id == a.workerId + '_' + a.date
         && a.day is timestamp && a.week is timestamp && a.day == a.day.date() && a.week == a.week.date()
         && a.day >= timestamp.date(2020,1,1) && a.day <= (request.time - duration.value(6,'h')).date()
@@ -491,14 +580,18 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/payrolls/$(a.weekStart))
         && activeWorker(a.workerId)
         && (!exists(/databases/$(database)/documents/workforce_settings/people) || !(a.workerId in get(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds))
-        && a.status in ['present','late','half','absent'] && a.nextDay is bool && a.justified is bool
+        && a.status in ['present','late','half','absent','excused','leave','sick','rest'] && a.nextDay is bool && a.justified is bool
         && a.arrival is string && a.arrival.matches('^$|^(?:[01]\\d|2[0-3]):[0-5]\\d$')
         && a.departure is string && a.departure.matches('^$|^(?:[01]\\d|2[0-3]):[0-5]\\d$')
         && (a.departure == '' || a.arrival != '')
         && a.breakMinutes is int && a.breakMinutes >= 0 && a.breakMinutes <= 240
-        && (a.status != 'absent' || (a.arrival == '' && a.departure == '' && !a.nextDay && a.breakMinutes == 0))
+        && (!(a.status in ['absent','excused','leave','sick','rest']) || (a.arrival == '' && a.departure == '' && !a.nextDay && a.breakMinutes == 0))
         && ((a.arrival != '' && a.departure != '' && total > 0 && total <= 1440) || ((a.arrival == '' || a.departure == '') && a.breakMinutes == 0 && !a.nextDay))
         && a.note is string && a.note.size() <= 500 && a.revision is int && a.updatedBy == request.auth.uid && a.updatedAt == request.time
+        && a.get('entryMode','manual') in ['manual','auto']
+        && ((a.get('entryMode','manual') == 'manual' && !a.keys().hasAny(['checkInServerAt','checkOutServerAt','timezone'])) || (a.get('entryMode','manual') == 'auto' && a.timezone == 'America/Managua' && a.day == (request.time - duration.value(6,'h')).date()
+          && ((a.get('checkInServerAt',null) == request.time && a.get('checkOutServerAt',null) == null && (resource == null || (resource.data.get('checkInServerAt',null) == null && resource.data.arrival == '')) && a.arrival == '' && a.departure == '')
+          || (resource != null && resource.data.get('checkInServerAt',null) is timestamp && request.time >= resource.data.checkInServerAt && a.get('checkInServerAt',null) == resource.data.checkInServerAt && resource.data.get('checkOutServerAt',null) == null && a.get('checkOutServerAt',null) == request.time && a.arrival == attendanceServerClock(resource.data.checkInServerAt) && a.departure == ''))))
         && getAfter(/databases/$(database)/documents/workforce_attendance_history/$(a.lastOperationId)).data.record == a;
     }
     match /workforce_attendance/{id} {
@@ -512,12 +605,13 @@ service cloud.firestore {
     match /workforce_attendance_history/{id} {
       allow get: if planner() || (isWorker() && resource.data.workerId == boundWorker());
       allow list: if planner() || (isWorker() && resource.data.workerId == boundWorker());
-      allow create: if planner() && request.resource.data.keys().hasOnly(['workerId','date','recordId','revision','actor','actorLabel','reason','fingerprint','record','createdAt'])
+      allow create: if planner() && request.resource.data.keys().hasOnly(['workerId','date','recordId','revision','actor','actorLabel','reason','fingerprint','previousValue','record','createdAt'])
         && request.resource.data.actor == request.auth.uid && request.resource.data.createdAt == request.time
         && request.resource.data.actorLabel is string && request.resource.data.actorLabel.size() <= 140
         && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
         && request.resource.data.fingerprint is string && request.resource.data.fingerprint.size() == 64
         && request.resource.data.recordId == request.resource.data.workerId + '_' + request.resource.data.date
+        && request.resource.data.get('previousValue', null) == (exists(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)) ? get(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data : null)
         && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data.lastOperationId == id
         && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data.revision == request.resource.data.revision
         && getAfter(/databases/$(database)/documents/workforce_attendance/$(request.resource.data.recordId)).data == request.resource.data.record;

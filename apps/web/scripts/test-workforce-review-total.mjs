@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import ts from "typescript";
+const source = fs.readFileSync("src/lib/workforce-review-total.ts", "utf8");
+const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+const exports = {};
+new Function("exports", output)(exports);
+const total = exports.accumulatedCrewQuantity;
+assert.equal(total([{ id: "one", quantity: 10 }, { id: "two", quantity: 4.5 }, { id: "three", quantity: null }]), 14.5);
+assert.equal(total([{ id: "one", quantity: 0.1 }, { id: "two", quantity: 0.2 }]), 0.3);
+assert.throws(() => total([{ id: "same", quantity: 1 }, { id: "same", quantity: 1 }]));
+assert.throws(() => total([{ id: "bad", quantity: -1 }]));
+assert.throws(() => total([{ id: "bad", quantity: NaN }]));
+assert.equal(total([]), 0);
+console.log("PASS crew totals: additive quantities, duplicate IDs and invalid inputs.");

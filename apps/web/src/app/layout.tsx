@@ -27,6 +27,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   manifest: "/manifest.webmanifest",
+  icons: { icon: [{ url: "/favicon.ico" }, { url: "/icon.png", type: "image/png" }] },
   appleWebApp: {
     capable: true,
     title: "Mama's Garden",

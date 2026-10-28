@@ -212,12 +212,18 @@ try {
     evidence: [],
     workDate: new Date("2026-10-27T06:00:00Z"),
   };
+  const partial = await command(id, { action: "progress", log: { ...log, quantity: 2 } }, worker);
+  assert.equal(partial.status, "in_progress", "Partial progress must not submit for review");
+  assert.equal(partial.logCount, 1);
+  assert.equal(partial.cumulativeReportedQuantity, 2);
+  const savedPartial = await store.getDoc(store.doc(db, "workforce_logs", partial.latestLogId));
+  assert.equal(savedPartial.data().quantity, 2);
   await command(id, { action: "submit", log }, worker);
   await assert.rejects(() =>
     command(
       id,
       { action: "accept", observations: "", acceptedQuantity: 10 },
-      manager,
+      worker,
     ),
   );
   selectUser(manager);
@@ -262,12 +268,40 @@ try {
     acceptedQuantity: null,
   });
   await command(id, { action: "submit", log: { ...log, quantity: 8 } }, worker);
+  await assert.rejects(() => command(id, { action: "accept", observations: "", acceptedQuantity: 1 }));
+  await assert.rejects(() => command(id, { action: "accept", observations: "Exceso", acceptedQuantity: 3 }));
   const done = await command(id, {
     action: "accept",
     observations: "Verificado",
-    acceptedQuantity: 8,
+    acceptedQuantity: 2,
   });
   assert.equal(done.status, "done");
+  assert.equal(done.acceptedQuantity, 2);
+  selectUser(admin);
+  const accumulatedId = op();
+  await api.createWorkTask(admin, plan, accumulatedId, op());
+  await command(accumulatedId, { action: "start" });
+  await command(accumulatedId, { action: "progress", log: { ...log, quantity: 2 } });
+  const accumulated = await command(accumulatedId, { action: "progress", log: { ...log, quantity: 3 } });
+  assert.equal(accumulated.cumulativeReportedQuantity, 5);
+  assert.equal(accumulated.progressCount, 2);
+  await assertFails(store.updateDoc(store.doc(db, "workforce_tasks", accumulatedId), { cumulativeReportedQuantity: 500 }));
+  await command(accumulatedId, { action: "submit", log: { ...log, quantity: 0 } });
+  await assert.rejects(() => command(accumulatedId, { action: "accept", observations: "", acceptedQuantity: 4 }));
+  const approvedAccumulation = await command(accumulatedId, { action: "accept", observations: "", acceptedQuantity: 5 }, manager);
+  assert.equal(approvedAccumulation.acceptedQuantity, 5);
+  assert.equal(approvedAccumulation.status, "done");
+  const legacyId = op();
+  selectUser(admin);
+  await api.createWorkTask(admin, plan, legacyId, op());
+  await command(legacyId, { action: "start" });
+  await command(legacyId, { action: "progress", log: { ...log, quantity: 2 } });
+  await command(legacyId, { action: "progress", log: { ...log, quantity: 3 } });
+  await command(legacyId, { action: "submit", log: { ...log, quantity: 0 } });
+  await env.withSecurityRulesDisabled(async (c) => store.updateDoc(store.doc(c.firestore(), "workforce_tasks", legacyId), { cumulativeReportedQuantity: store.deleteField(), progressCount: store.deleteField(), lastProgressDelta: store.deleteField() }));
+  await assert.rejects(() => command(legacyId, { action: "accept", observations: "", acceptedQuantity: 5, legacyReportedQuantity: 5 }));
+  const legacyDone = await command(legacyId, { action: "accept", observations: "Conciliación de avances históricos", acceptedQuantity: 5, legacyReportedQuantity: 5 }, manager);
+  assert.equal(legacyDone.acceptedQuantity, 5);
   await assert.rejects(() => command(id, { action: "start" }));
   selectUser(admin);
   await assertFails(store.deleteDoc(store.doc(db, "workforce_tasks", id)));
@@ -281,10 +315,10 @@ try {
   );
   const original = await api.readWorkforce(admin),
     history = original.events.filter((e) => e.taskId === id);
-  assert.equal(history.length, 8);
+  assert.equal(history.length, 9);
   const logDone = original.logs.find((l) => l.id === done.latestLogId),
     reviewDone = original.reviews.find((r) => r.id === done.latestReviewId);
-  assert.equal(domain.productivity(done, logDone, reviewDone).value, 4);
+  assert.equal(domain.productivity(done, logDone, reviewDone).value, 1);
   const copy = domain.duplicatePlan(done, "2026-10-28");
   assert.ok(
     !("logCount" in copy) && !("status" in copy) && !("minutes" in copy),
@@ -403,8 +437,8 @@ try {
   const completion = { ...done, targetQuantity: null };
   assert.equal(
     domain.productivity(done, logDone, reviewDone, original.logs).value,
-    2,
-    "Returned work still contributes to total dedicated time",
+    2 / 6,
+    "Partial and returned work both contribute to total dedicated time",
   );
   const evidenceTask = op();
   await api.createWorkTask(admin, plan, evidenceTask, op());
@@ -539,6 +573,25 @@ try {
   );
   const revisions = await att.attendanceHistory(admin, "w1", entry.date);
   assert.equal(revisions.length, 2);
+  assert.equal(revisions[0].previousValue.arrival, "07:00");
+  assert.equal(revisions[0].record.departure, "16:00");
+  const serverDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const auto = { ...entry, workerId: "w3", date: serverDay, arrival: "" };
+  const clockOp = op();
+  await att.saveAttendance(admin, auto, 0, clockOp, "Entrada automática", "arrival");
+  await att.saveAttendance(admin, auto, 0, clockOp, "Entrada automática", "arrival");
+  const autoRef = store.doc(db, "workforce_attendance", `w3_${serverDay}`);
+  const clockRecord = (await store.getDoc(autoRef)).data();
+  assert.ok(clockRecord.checkInServerAt instanceof store.Timestamp);
+  const displayed = (await att.readAttendanceRevisions(admin)).find((item) => item.id === `w3_${serverDay}`);
+  assert.match(displayed.arrival, /^\d\d:\d\d$/);
+  await assert.rejects(() => att.saveAttendance(admin, { ...auto, arrival: displayed.arrival }, 1, op(), "Entrada duplicada", "arrival"));
+  await att.saveAttendance(admin, { ...auto, arrival: displayed.arrival }, 1, op(), "Salida automática", "departure");
+  assert.ok((await store.getDoc(autoRef)).data().checkOutServerAt instanceof store.Timestamp);
+  for (const status of ["excused", "leave", "sick", "rest"]) {
+    att.validateAttendance({ ...entry, status, arrival: "" });
+    assert.throws(() => att.validateAttendance({ ...entry, status }));
+  }
   await assertFails(
     store.updateDoc(
       store.doc(db, "workforce_attendance_history", revisions[0].id),
