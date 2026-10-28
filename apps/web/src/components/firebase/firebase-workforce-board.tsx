@@ -1,6 +1,7 @@
 "use client";
 import { FarmLoader } from "@/components/farm-loader";
 import { getWorkerDailyAvailability } from "@/lib/workforce-availability";
+import { accumulatedCrewQuantity } from "@/lib/workforce-review-total";
 import {
   useEffect,
   useRef,
@@ -1410,7 +1411,7 @@ function ReviewForm({
       }}
     >
       <p className="text-sm">{log?.result}</p>
-      <p className="text-sm">Avances parciales: {progressLogs.reduce((sum, entry) => sum + (entry.quantity ?? 0), 0)} {task.unit} · {progressLogs.reduce((sum, entry) => sum + Object.values(entry.minutes).reduce((n, minutes) => n + minutes, 0), 0)} minutos-persona.</p>
+      <p className="text-sm">Avances parciales: {accumulatedCrewQuantity(progressLogs)} {task.unit} · {progressLogs.reduce((sum, entry) => sum + Object.values(entry.minutes).reduce((n, minutes) => n + minutes, 0), 0)} minutos-persona.</p>
       <p className="text-xs text-neutral-500">
         Criterio: {log?.criterionMet ? "Cumplido" : "No cumplido"} ·{" "}
         {Object.values(log?.minutes ?? {}).reduce((a, b) => a + b, 0)}{" "}
