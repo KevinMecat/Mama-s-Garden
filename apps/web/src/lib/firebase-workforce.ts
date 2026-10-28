@@ -101,6 +101,9 @@ export async function createWorkTask(
       cancelReason: "",
       revision: 1,
       logCount: 0,
+      cumulativeReportedQuantity: 0,
+      lastProgressDelta: 0,
+      progressCount: 0,
       latestLogId: "",
       latestReviewId: "",
       lastOperationId: operationId,
@@ -181,6 +184,12 @@ export async function commandWorkTask(
       )
         throw Error("La fecha trabajada no puede estar en el futuro.");
       saved.latestLogId = operationId;
+      if (command.action === "progress") {
+        if ((current.cumulativeReportedQuantity === undefined || current.progressCount === undefined) && current.logCount > 0) throw Error("Esta tarea tiene avances anteriores que necesitan conciliación antes de continuar.");
+        saved.lastProgressDelta = command.log.quantity ?? 0;
+        saved.cumulativeReportedQuantity = (current.cumulativeReportedQuantity ?? 0) + saved.lastProgressDelta;
+        saved.progressCount = (current.progressCount ?? 0) + 1;
+      }
       tx.set(doc(db, "workforce_logs", operationId), {
         ...command.log,
         workDate: Timestamp.fromDate(workDate),
@@ -200,6 +209,7 @@ export async function commandWorkTask(
         acceptedQuantity:
           command.action === "accept" ? command.acceptedQuantity : null,
         observations: command.observations.trim(),
+        ...(command.action === "accept" && command.legacyReportedQuantity !== undefined ? { legacyReportedQuantity: command.legacyReportedQuantity } : {}),
         createdBy: actor,
         createdAt: serverTimestamp(),
       });

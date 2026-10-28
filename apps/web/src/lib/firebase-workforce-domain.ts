@@ -46,6 +46,10 @@ export type WorkTask = Plan & {
   updatedBy: string;
   createdAt?: unknown;
   updatedAt?: unknown;
+  cumulativeReportedQuantity?: number;
+  progressCount?: number;
+  lastProgressDelta?: number;
+  acceptedQuantity?: number | null;
 };
 export type WorkLog = {
   id: string;
@@ -95,6 +99,7 @@ export type Command =
       action: "accept" | "return";
       observations: string;
       acceptedQuantity: number | null;
+      legacyReportedQuantity?: number;
     };
 export const canPlan = (role: UserRole) =>
   ["ADMIN", "MANAGER", "SUPERVISOR"].includes(role);
@@ -227,11 +232,15 @@ export function transition(
     }
     case "accept":
     case "return":
-      if (role !== "ADMIN" || task.status !== "review" || !latestLog)
-        throw Error("Solo el Administrador revisa un cierre registrado.");
+      if (!manager || task.status !== "review" || !latestLog)
+        throw Error("Solo el Administrador o Encargado revisa un cierre registrado.");
       if (command.action === "return" && !command.observations.trim())
         throw Error("Explica qué debe corregirse.");
       if (command.action === "accept") {
+        const legacy = (task.cumulativeReportedQuantity === undefined || task.progressCount === undefined) && task.logCount > 1;
+        const maximum = legacy ? command.legacyReportedQuantity : (task.progressCount ?? 0) > 0 ? task.cumulativeReportedQuantity : latestLog.quantity;
+        if (legacy && (!Number.isFinite(maximum) || (maximum ?? -1) < 0 || !command.observations.trim()))
+          throw Error("La conciliación histórica requiere el total reportado y una observación.");
         if (!latestLog.criterionMet)
           throw Error(
             "No se puede aceptar un criterio incumplido. Devuelve la tarea.",
@@ -241,13 +250,16 @@ export function transition(
           (command.acceptedQuantity === null ||
             !Number.isFinite(command.acceptedQuantity) ||
             command.acceptedQuantity < 0 ||
-            command.acceptedQuantity > (latestLog.quantity ?? -1))
+            command.acceptedQuantity > (maximum ?? 0))
         )
           throw Error(
             "La cantidad aceptada debe estar entre cero y la cantidad reportada.",
           );
         if (task.targetQuantity === null && command.acceptedQuantity !== null)
           throw Error("Esta tarea se acepta por cumplimiento.");
+        if (command.acceptedQuantity !== null && command.acceptedQuantity !== (maximum ?? 0) && !command.observations.trim())
+          throw Error("Indica el motivo de la diferencia en la cantidad aceptada.");
+        next.acceptedQuantity = command.acceptedQuantity;
       }
       next.status = command.action === "accept" ? "done" : "in_progress";
       break;

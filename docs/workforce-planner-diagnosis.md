@@ -67,3 +67,13 @@ compartida. No lee Firestore, no aplica propuestas y no está integrado en la
 interfaz. No implementa aún jornadas fijas, fragmentación, diagnóstico de cuellos
 de botella ni control externo de tiempo mediante Web Worker. Su salida no afirma
 optimalidad: debe considerarse experimental y no usarse para decisiones reales.
+
+## Compatibilidad del acumulado anterior
+
+Las tareas nuevas conservan un acumulado en el documento de tarea y las reglas
+comprueban que cada incremento corresponde al registro creado en la misma
+transacción. Para tareas anteriores con más de un registro sin acumulador, la
+revisión calcula el total a partir del historial consultado y exige una nota de
+conciliación. Firestore Rules no puede verificar esa suma de documentos: el
+importe histórico lo declara el encargado y debe comprobarse contra el historial.
+Esta excepción no ofrece la misma garantía que el acumulador de tareas nuevas.

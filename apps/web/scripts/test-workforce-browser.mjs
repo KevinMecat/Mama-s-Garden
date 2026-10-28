@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { ref, uploadBytes } from "firebase/storage";
 import { chromium } from "@playwright/test";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { doc, setDoc, getDoc, getDocs, collection } from "firebase/firestore";
 
 // Synthetic fixtures are confined to a demo-* project on loopback emulators.
 const projectId = "demo-workforce-browser";
@@ -211,11 +211,15 @@ try {
   const day = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Managua",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   await page.clock.setFixedTime(new Date(`${day}T07:15:00-06:00`));
   await secondCard.getByRole("button",{name:"Registrar entrada ahora",exact:true}).click();
-  await secondCard.getByText("07:15",{exact:true}).waitFor();
+  await secondCard.getByRole("button",{name:"Entrada registrada",exact:true}).waitFor();
+  let serverEntry;
+  await env.withSecurityRulesDisabled(async (c) => { serverEntry = (await getDoc(doc(c.firestore(), "workforce_attendance", `w2_${day}`))).data(); });
+  const serverTime = new Intl.DateTimeFormat("en-GB", {timeZone:"America/Managua", hour:"2-digit", minute:"2-digit", hour12:false}).format(serverEntry.checkInServerAt.toDate());
+  await secondCard.getByText(serverTime,{exact:true}).first().waitFor();
   assert.ok(await secondCard.getByRole("button",{name:"Entrada registrada",exact:true}).isDisabled());
   await page.clock.setFixedTime(new Date(`${day}T16:45:00-06:00`));
   await secondCard.getByRole("button",{name:"Registrar salida ahora",exact:true}).click();
-  await secondCard.getByText("16:45",{exact:true}).waitFor();
+  await secondCard.getByRole("button",{name:"Salida registrada",exact:true}).waitFor();
   await page.getByRole("button",{name:"Manual",exact:true}).click();
   await secondCard.getByLabel("Entrada manual",{exact:true}).fill("08:00");
   await secondCard.getByLabel("Salida manual",{exact:true}).fill("17:00");
@@ -223,7 +227,7 @@ try {
   await secondCard.getByText("9 h 0 min",{exact:false}).waitFor();
   const thirdCard = page.locator("article").filter({has:page.getByRole("heading",{name:"Persona 3 Sintética",exact:true})});
   await thirdCard.getByRole("button", {name:"Ausente",exact:true}).click();
-  await thirdCard.getByText("Ausente",{exact:true}).waitFor();
+  await thirdCard.getByText("Ausencia injustificada",{exact:true}).waitFor();
   await thirdCard.getByRole("button", {name:"Presente",exact:true}).click();
   await thirdCard.getByText("Presente",{exact:true}).waitFor();
   await personCard.locator("summary").filter({hasText:"Más opciones"}).click();

@@ -292,12 +292,12 @@ export function FirebaseWorkforceBoard({
     else if (
       status === "done" &&
       task.status === "review" &&
-      user.role === "ADMIN"
+      manager
     )
       setReviewing(task);
     else
       setError(
-        "Usa el flujo Por hacer → En curso → Cierre → Revisión del Administrador. Para corregir un cierre, devuelve la tarea.",
+        "Usa el flujo Por hacer → En curso → Cierre → Revisión del Administrador o Encargado. Para corregir un cierre, devuelve la tarea.",
       );
   }
   function actions(task: WorkTask) {
@@ -334,7 +334,7 @@ export function FirebaseWorkforceBoard({
         {!task.isBlocked &&
           !task.isCancelled &&
           task.status === "review" &&
-          user.role === "ADMIN" && (
+          manager && (
             <button
               disabled={busy}
               className="f-button f-primary"
@@ -1117,10 +1117,10 @@ export function FirebaseWorkforceBoard({
             progressLogs={(data?.logs ?? []).filter((entry) => (data?.events ?? []).some((event) => event.taskId === reviewing.id && event.action === "progress" && event.id === entry.id))}
             busy={busy}
             error={error}
-            submit={(action, observations, acceptedQuantity) =>
+            submit={(action, observations, acceptedQuantity, legacyReportedQuantity) =>
               command(
                 reviewing,
-                { action, observations, acceptedQuantity },
+                { action, observations, acceptedQuantity, ...(legacyReportedQuantity !== undefined ? { legacyReportedQuantity } : {}) },
                 () => setReviewing(undefined),
               )
             }
@@ -1392,9 +1392,12 @@ function ReviewForm({
     action: "accept" | "return",
     observations: string,
     quantity: number | null,
+    legacyReportedQuantity?: number,
   ): Promise<void>;
 }) {
   const [action, setAction] = useState<"accept" | "return">("accept");
+  const legacy = (task.cumulativeReportedQuantity === undefined || task.progressCount === undefined) && task.logCount > 1;
+  const maximum = legacy && progressLogs.length ? accumulatedCrewQuantity(progressLogs) : (task.progressCount ?? 0) > 0 ? (task.cumulativeReportedQuantity ?? 0) : (log?.quantity ?? 0);
   return (
     <form
       className="space-y-4"
@@ -1407,10 +1410,12 @@ function ReviewForm({
           task.targetQuantity === null || action === "return"
             ? null
             : Number(data.get("quantity")),
+          action === "accept" && legacy ? maximum : undefined,
         );
       }}
     >
       <p className="text-sm">{log?.result}</p>
+      {legacy && <p className="text-xs text-amber-700">Registro anterior: verifica el total contra el historial. Este total no puede comprobarse automáticamente en el servidor y requiere una observación de conciliación.</p>}
       <p className="text-sm">Avances parciales: {accumulatedCrewQuantity(progressLogs)} {task.unit} · {progressLogs.reduce((sum, entry) => sum + Object.values(entry.minutes).reduce((n, minutes) => n + minutes, 0), 0)} minutos-persona.</p>
       <p className="text-xs text-neutral-500">
         Criterio: {log?.criterionMet ? "Cumplido" : "No cumplido"} ·{" "}
@@ -1429,23 +1434,23 @@ function ReviewForm({
       </Field>
       {action === "accept" && task.targetQuantity !== null && (
         <Field
-          label={`Cantidad aceptada · máximo ${log?.quantity ?? 0} ${task.unit}`}
+          label={`Cantidad aceptada definitiva · máximo ${maximum} ${task.unit}`}
         >
           <input
             required
             name="quantity"
             type="number"
             min="0"
-            max={log?.quantity ?? 0}
+            max={maximum}
             step="any"
-            defaultValue={log?.quantity ?? 0}
+            defaultValue={maximum}
             className="f-input"
           />
         </Field>
       )}
       <Field label="Observaciones">
         <textarea
-          required={action === "return"}
+          required={action === "return" || (action === "accept" && legacy)}
           name="observations"
           maxLength={4000}
           className="f-input min-h-24"
@@ -1693,7 +1698,7 @@ export function WorkforceAccounts({
       )}
       <p className="text-xs text-neutral-500">
         <ListTodo size={14} className="mr-1 inline" />
-        Administrador: salarios, finanzas y aceptación. Encargado: planificación
+        Administrador: salarios y finanzas. Encargado: planificación y aceptación
         y cierres. Trabajador: tareas vinculadas y cierres individuales.
       </p>
     </section>

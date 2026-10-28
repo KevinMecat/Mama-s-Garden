@@ -29,13 +29,6 @@ import {
   attendanceHistory,
   type AttendancePlan,
 } from "@/lib/firebase-attendance";
-const timeNow = () =>
-  new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Managua",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date());
 const duration = (n: number | null) =>
   n === null
     ? "Pendiente de cierre"
@@ -109,17 +102,18 @@ export function FirebaseAttendanceBoard({
     revision: number,
     reason: string,
     close = false,
+    automatic?: "arrival" | "departure",
   ) {
     if (locked.current) return;
     locked.current = true;
     setBusy(true);
     setError("");
     setNotice("");
-    const key = JSON.stringify({ plan, revision, reason });
+    const key = JSON.stringify({ plan, revision, reason, automatic });
     const id = pending.current.get(key) ?? crypto.randomUUID();
     pending.current.set(key, id);
     try {
-      await saveAttendance(user, plan, revision, id, reason);
+      await saveAttendance(user, plan, revision, id, reason, automatic);
       await changed();
       pending.current.delete(key);
       if (close) setEditor(null);
@@ -149,10 +143,8 @@ export function FirebaseAttendanceBoard({
       plan.nextDay = false;
     }
     if (action === "arrival") {
-      plan.arrival = timeNow();
       if (isAbsence(plan.status)) plan.status = "present";
     }
-    if (action === "departure") plan.departure = timeNow();
     void save(
       plan,
       row?.operationalRevision ? Number(row.revision) : 0,
@@ -163,6 +155,8 @@ export function FirebaseAttendanceBoard({
         : action === "arrival"
           ? "Entrada registrada ahora"
           : "Salida registrada ahora",
+      false,
+      action === "arrival" || action === "departure" ? action : undefined,
     );
   }
   function exportCsv() {
@@ -283,7 +277,7 @@ export function FirebaseAttendanceBoard({
           {notice}
         </p>
       )}
-      {busy && <p role="status" className="flex items-center gap-2 text-sm text-emerald-700"><BusyIndicator /> Guardando asistencia…</p>}
+      {busy && <p role="status" className="flex items-center gap-2 text-sm text-emerald-700"><BusyIndicator /> Sincronizando con servidor…</p>}
       {isClosed(date) && (
         <p role="status" className="surface-card p-4 text-sm">
           Período cerrado: asistencia protegida contra cambios.
@@ -299,7 +293,7 @@ export function FirebaseAttendanceBoard({
             .map((w) => {
               const row = find(w.id),
                 plan = draft(w, row),
-                disabled = busy || isClosed(date) || w.status !== "active";
+                disabled = busy || row?.pendingConfirmation === true || isClosed(date) || w.status !== "active";
               return (
                 <article className="surface-card p-5" key={w.id}>
                   <div className="flex flex-wrap items-start gap-3">
@@ -325,13 +319,13 @@ export function FirebaseAttendanceBoard({
                     <div>
                       <dt className="text-xs text-neutral-500">Entrada</dt>
                       <dd className="mt-1 font-semibold tabular-nums">
-                        {plan.arrival || "—"}
+                        {row?.pendingConfirmation ? "Confirmando hora…" : plan.arrival || "—"}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-neutral-500">Salida</dt>
                       <dd className="mt-1 font-semibold tabular-nums">
-                        {plan.departure || "—"}
+                        {row?.pendingConfirmation ? "Confirmando hora…" : plan.departure || "—"}
                         {plan.nextDay ? " (+1 día)" : ""}
                       </dd>
                     </div>

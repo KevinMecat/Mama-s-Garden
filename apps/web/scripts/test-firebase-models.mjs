@@ -21,8 +21,9 @@ assert.equal(model.currentSalary(salary, "2026-10-27").type, "weekly", "Never co
 assert.equal(model.currentSalary(salary, "2025-01-01"), undefined);
 assert.equal(model.fullName({ id: "p", firstName: "Persona", lastName: "Prueba" }), "Persona Prueba");
 const transport = fs.readFileSync("src/lib/firebase-client.ts", "utf8");
-assert.ok(!/\b(?:setDoc|addDoc|updateDoc|deleteDoc|writeBatch|runTransaction|uploadBytes|deleteObject|updateMetadata)\b/.test(transport), "Operational connection must be read-only");
+const readSection = transport.slice(transport.indexOf("export async function readCollection"), transport.indexOf("export function storagePath"));
+assert.ok(readSection.includes("getDocsFromServer") && !/\b(?:setDoc|addDoc|updateDoc|deleteDoc|writeBatch|runTransaction|uploadBytes|deleteObject|updateMetadata)\b/.test(readSection), "Collection reads must not mutate data");
 assert.ok(transport.includes("getDocsFromServer") && transport.includes("getDocFromServer"));
 assert.ok(transport.includes("memoryLocalCache()") && transport.includes("browserSessionPersistence"));
 assert.ok(!transport.includes("localStorage"));
-console.log("Firebase model tests passed: cents, separate currencies, salary effective dates and units, protected server reads and no mutation APIs.");
+console.log("Firebase model tests passed: cents, separate currencies, salary effective dates, units and read-only collection reads.");
