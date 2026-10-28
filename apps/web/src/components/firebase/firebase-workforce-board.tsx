@@ -155,6 +155,7 @@ export function FirebaseWorkforceBoard({
     );
   const [closing, setClosing] = useState<WorkTask>(),
     [reviewing, setReviewing] = useState<WorkTask>();
+  const [closeMode, setCloseMode] = useState<"submit" | "progress">("submit");
   const [reasonAction, setReasonAction] = useState<{
     task: WorkTask;
     action: "block" | "unblock" | "cancel";
@@ -285,7 +286,7 @@ export function FirebaseWorkforceBoard({
     if (status === "in_progress" && task.status === "todo")
       void command(task, { action: "start" });
     else if (status === "review" && task.status === "in_progress")
-      setClosing(task);
+      { setCloseMode("submit"); setClosing(task); }
     else if (
       status === "done" &&
       task.status === "review" &&
@@ -317,12 +318,17 @@ export function FirebaseWorkforceBoard({
             <button
               disabled={busy}
               className="f-button f-primary"
-              onClick={() => setClosing(task)}
+              onClick={() => { setCloseMode("submit"); setClosing(task); }}
             >
               <Send size={14} />
               Registrar cierre
             </button>
           )}
+        {!task.isBlocked && !task.isCancelled && task.status === "in_progress" && (manager || task.assignees.length === 1) && (
+          <button disabled={busy} className="f-button" onClick={() => { setCloseMode("progress"); setClosing(task); }}>
+            Registrar avance del día
+          </button>
+        )}
         {!task.isBlocked &&
           !task.isCancelled &&
           task.status === "review" &&
@@ -524,6 +530,10 @@ export function FirebaseWorkforceBoard({
                   .map((task) => {
                     const log = taskLog(task);
                     const accepted = taskReview(task);
+                    const progressIds = new Set(data?.events.filter((event) => event.taskId === task.id && event.action === "progress").map((event) => event.id));
+                    const progressLogs = data?.logs.filter((entry) => progressIds.has(entry.id)) ?? [];
+                    const progressHours = progressLogs.reduce((sum, entry) => sum + Object.values(entry.minutes).reduce((minutes, value) => minutes + value, 0), 0) / 60;
+                    const progressQuantity = progressLogs.reduce((sum, entry) => sum + (entry.quantity ?? 0), 0);
                     return (
                       <article
                         key={task.id}
@@ -569,6 +579,8 @@ export function FirebaseWorkforceBoard({
                         <p className="mt-2 text-[11px] text-neutral-500">
                           {task.dueDate}
                         </p>
+                        <p className="mt-2 text-xs text-neutral-500">{task.estimatedHours !== null ? `${task.estimatedHours} h por persona · ` : ""}{task.autonomy === "assisted" ? "Requiere acompañamiento" : task.autonomy === "independent" ? "Trabajo autónomo" : "Autonomía sin definir"}{task.limitingTools ? ` · ${task.limitingTools}` : ""}</p>
+                        {progressLogs.length > 0 && <p className="mt-2 text-xs text-neutral-500">Avances de cuadrilla: {task.targetQuantity !== null ? `${progressQuantity} ${task.unit} · ` : ""}{progressHours} horas-persona registradas</p>}
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           {task.assignees.map((id) => (
                             <span
@@ -1032,6 +1044,20 @@ export function FirebaseWorkforceBoard({
                 />
               </Field>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Autonomía requerida">
+                <select className="f-input" value={editor.plan.autonomy ?? ""} onChange={(e) => {
+                  const { autonomy: ignored, ...rest } = editor.plan;
+                  void ignored;
+                  setEditor({ ...editor, plan: e.target.value ? { ...rest, autonomy: e.target.value as NonNullable<Plan["autonomy"]> } : rest });
+                }}>
+                  <option value="">Sin definir</option><option value="independent">Independiente</option><option value="assisted">Requiere acompañamiento</option>
+                </select>
+              </Field>
+              <Field label="Herramientas limitantes">
+                <input className="f-input" maxLength={200} value={editor.plan.limitingTools ?? ""} onChange={(e) => setEditor({ ...editor, plan: { ...editor.plan, limitingTools: e.target.value } })} placeholder="Ej. motobomba" />
+              </Field>
+            </div>
             {warnings(editor.plan).map((w) => (
               <p
                 key={w}
@@ -1059,13 +1085,14 @@ export function FirebaseWorkforceBoard({
       {closing && (
         <CloseForm
           task={closing}
+          mode={closeMode}
           busy={busy}
           error={error}
           close={() => {
             if (!busy) setClosing(undefined);
           }}
           submit={(value) =>
-            command(closing, { action: "submit", log: value }, () =>
+            command(closing, { action: closeMode, log: value }, () =>
               setClosing(undefined),
             )
           }
@@ -1196,16 +1223,18 @@ function EventList({
 }
 function CloseForm({
   task,
+  mode,
   busy,
   error,
   close,
   submit,
 }: {
   task: WorkTask;
+  mode: "submit" | "progress";
   busy: boolean;
   error: string;
   close(): void;
-  submit(value: Extract<Command, { action: "submit" }>["log"]): Promise<void>;
+  submit(value: Extract<Command, { action: "submit" | "progress" }>["log"]): Promise<void>;
 }) {
   const [uploading, setUploading] = useState(false),
     [localError, setLocalError] = useState("");
@@ -1254,7 +1283,7 @@ function CloseForm({
     }
   }
   return (
-    <Modal title={`Cierre de jornada: ${task.title}`} close={close}>
+    <Modal title={`${mode === "progress" ? "Avance del día" : "Cierre de jornada"}: ${task.title}`} close={close}>
       <form onSubmit={(e) => void save(e)} className="space-y-4">
         <p className="rounded-lg bg-neutral-100 p-3 text-xs">
           Criterio: {task.acceptanceCriteria}.{" "}
@@ -1333,7 +1362,7 @@ function CloseForm({
         )}
         <button disabled={busy || uploading} className="f-button f-primary">
           <Send size={16} />
-          {busy || uploading ? "Guardando…" : "Enviar a revisión"}
+          {busy || uploading ? "Guardando…" : mode === "progress" ? "Guardar avance" : "Enviar a revisión"}
         </button>
       </form>
     </Modal>

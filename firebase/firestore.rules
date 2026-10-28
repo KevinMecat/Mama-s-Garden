@@ -327,7 +327,9 @@ service cloud.firestore {
         && t.acceptanceCriteria is string && t.acceptanceCriteria.size() > 0 && t.acceptanceCriteria.size() <= 2000
         && (t.targetQuantity == null || (t.targetQuantity is number && t.targetQuantity > 0 && t.targetQuantity <= 1000000000 && t.unit.size() > 0))
         && t.unit is string && t.unit.size() <= 60
-        && (t.estimatedHours == null || (t.estimatedHours is number && t.estimatedHours > 0 && t.estimatedHours <= 24));
+        && (t.estimatedHours == null || (t.estimatedHours is number && t.estimatedHours > 0 && t.estimatedHours <= 24))
+        && t.get('autonomy','independent') in ['independent','assisted']
+        && t.get('limitingTools','') is string && t.get('limitingTools','').size() <= 200;
     }
     function activeAssignments(t) {
       return assignedActive(t.assignees, 0) && assignedActive(t.assignees, 1) && assignedActive(t.assignees, 2)
@@ -336,7 +338,7 @@ service cloud.firestore {
           || !t.assignees.hasAny(get(/databases/$(database)/documents/workforce_settings/people).data.inactiveWorkerIds));
     }
     function taskKeys(t) {
-      return t.keys().hasOnly(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','status','isBlocked','blockReason','isCancelled','cancelReason','revision','logCount','latestLogId','latestReviewId','lastOperationId','createdBy','updatedBy','createdAt','updatedAt'])
+      return t.keys().hasOnly(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','autonomy','limitingTools','status','isBlocked','blockReason','isCancelled','cancelReason','revision','logCount','latestLogId','latestReviewId','lastOperationId','createdBy','updatedBy','createdAt','updatedAt'])
         && t.isBlocked is bool && t.blockReason is string && t.blockReason.size() <= 2000
         && t.isCancelled is bool && t.cancelReason is string && t.cancelReason.size() <= 2000
         && t.status in ['todo','in_progress','review','done']
@@ -382,12 +384,16 @@ service cloud.firestore {
           || (action == 'cancel' && isAdmin() && b.isCancelled && b.cancelReason.size() > 0 && changed.hasOnly(common.concat(['isCancelled','cancelReason'])))
           || (!a.isBlocked && (
             (action == 'edit' && planner() && a.logCount == 0 && a.status in ['todo','in_progress'] && validPlan(b) && activeAssignments(b)
-              && changed.hasOnly(common.concat(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours'])))
+              && changed.hasOnly(common.concat(['title','activity','project','location','assignees','assigneeNames','dueDate','priority','instructions','acceptanceCriteria','targetQuantity','unit','estimatedHours','autonomy','limitingTools'])))
             || (action == 'start' && a.status == 'todo' && b.status == 'in_progress' && changed.hasOnly(common.concat(['status'])))
             || (action == 'submit' && a.status == 'in_progress' && b.status == 'review' && b.latestLogId == b.lastOperationId && b.logCount == a.logCount + 1
               && (planner() || (a.assignees.size() == 1 && a.assignees[0] == boundWorker()))
               && validLog(getAfter(/databases/$(database)/documents/workforce_logs/$(b.latestLogId)).data,b)
               && changed.hasOnly(common.concat(['status','latestLogId','logCount'])))
+            || (action == 'progress' && a.status == 'in_progress' && b.status == 'in_progress' && b.latestLogId == b.lastOperationId && b.logCount == a.logCount + 1
+              && (planner() || (a.assignees.size() == 1 && a.assignees[0] == boundWorker()))
+              && validLog(getAfter(/databases/$(database)/documents/workforce_logs/$(b.latestLogId)).data,b)
+              && changed.hasOnly(common.concat(['latestLogId','logCount'])))
             || (action in ['accept','return'] && isAdmin() && a.status == 'review' && b.status == (action == 'accept' ? 'done' : 'in_progress')
               && b.latestReviewId == b.lastOperationId && getAfter(/databases/$(database)/documents/workforce_reviews/$(b.latestReviewId)).data.accepted == (action == 'accept')
               && validReview(getAfter(/databases/$(database)/documents/workforce_reviews/$(b.latestReviewId)).data,b)
@@ -426,7 +432,7 @@ service cloud.firestore {
     match /workforce_logs/{id} {
       allow read: if canReadTask(resource.data);
       allow create: if activeUser() && taskAfter(request.resource.data.taskId).latestLogId == id
-        && taskAfter(request.resource.data.taskId).lastOperationId == id && taskAfter(request.resource.data.taskId).status == 'review'
+        && taskAfter(request.resource.data.taskId).lastOperationId == id && taskAfter(request.resource.data.taskId).status in ['review','in_progress']
         && validLog(request.resource.data,taskAfter(request.resource.data.taskId));
       allow update, delete: if false;
     }

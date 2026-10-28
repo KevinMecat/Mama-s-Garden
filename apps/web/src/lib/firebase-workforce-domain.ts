@@ -27,6 +27,8 @@ export type Plan = {
   targetQuantity: number | null;
   unit: string;
   estimatedHours: number | null;
+  autonomy?: "independent" | "assisted";
+  limitingTools?: string;
 };
 export type WorkTask = Plan & {
   id: string;
@@ -86,7 +88,7 @@ export type Command =
   | { action: "edit"; plan: Plan }
   | { action: "block" | "unblock" | "cancel"; reason: string }
   | {
-      action: "submit";
+      action: "submit" | "progress";
       log: Omit<WorkLog, "id" | "taskId" | "createdBy" | "createdAt">;
     }
   | {
@@ -97,6 +99,8 @@ export type Command =
 export const canPlan = (role: UserRole) =>
   ["ADMIN", "MANAGER", "SUPERVISOR"].includes(role);
 export function validatePlan(plan: Plan) {
+  if ((plan.autonomy && !["independent", "assisted"].includes(plan.autonomy)) || (plan.limitingTools?.length ?? 0) > 200)
+    throw Error("Autonomía o herramientas inválidas.");
   if (
     !plan.title.trim() ||
     plan.title.length > 160 ||
@@ -182,6 +186,7 @@ export function transition(
         throw Error("Solo se puede iniciar una tarea por hacer.");
       next.status = "in_progress";
       break;
+    case "progress":
     case "submit": {
       if (task.status !== "in_progress")
         throw Error("Primero inicia la tarea.");
@@ -216,7 +221,7 @@ export function transition(
         throw Error("Registra la cantidad realizada, incluso si fue cero.");
       if (task.targetQuantity === null && log.quantity !== null)
         throw Error("Una labor de cumplimiento no lleva cantidad numérica.");
-      next.status = "review";
+      if (command.action === "submit") next.status = "review";
       next.logCount++;
       break;
     }
@@ -263,6 +268,8 @@ export function duplicatePlan(task: WorkTask, dueDate: string): Plan {
     targetQuantity,
     unit,
     estimatedHours,
+    autonomy,
+    limitingTools,
   } = task;
   return {
     title,
@@ -278,6 +285,8 @@ export function duplicatePlan(task: WorkTask, dueDate: string): Plan {
     targetQuantity,
     unit,
     estimatedHours,
+    ...(autonomy ? { autonomy } : {}),
+    ...(limitingTools ? { limitingTools } : {}),
   };
 }
 export function productivity(

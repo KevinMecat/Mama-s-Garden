@@ -170,7 +170,7 @@ export async function commandWorkTask(
     );
     const { id: ignoredId, ...saved } = next;
     void ignoredId;
-    if (command.action === "submit") {
+    if (command.action === "submit" || command.action === "progress") {
       const workDate =
         command.log.workDate instanceof Date
           ? command.log.workDate
@@ -222,7 +222,7 @@ export async function commandWorkTask(
           ? command.reason.trim()
           : "observations" in command
             ? command.observations.trim()
-            : command.action === "submit"
+            : command.action === "submit" || command.action === "progress"
               ? command.log.result.trim()
               : "",
       revision: current.revision + 1,

@@ -212,6 +212,11 @@ try {
     evidence: [],
     workDate: new Date("2026-10-27T06:00:00Z"),
   };
+  const partial = await command(id, { action: "progress", log: { ...log, quantity: 2 } }, worker);
+  assert.equal(partial.status, "in_progress", "Partial progress must not submit for review");
+  assert.equal(partial.logCount, 1);
+  const savedPartial = await store.getDoc(store.doc(db, "workforce_logs", partial.latestLogId));
+  assert.equal(savedPartial.data().quantity, 2);
   await command(id, { action: "submit", log }, worker);
   await assert.rejects(() =>
     command(
@@ -281,7 +286,7 @@ try {
   );
   const original = await api.readWorkforce(admin),
     history = original.events.filter((e) => e.taskId === id);
-  assert.equal(history.length, 8);
+  assert.equal(history.length, 9);
   const logDone = original.logs.find((l) => l.id === done.latestLogId),
     reviewDone = original.reviews.find((r) => r.id === done.latestReviewId);
   assert.equal(domain.productivity(done, logDone, reviewDone).value, 4);
@@ -403,8 +408,8 @@ try {
   const completion = { ...done, targetQuantity: null };
   assert.equal(
     domain.productivity(done, logDone, reviewDone, original.logs).value,
-    2,
-    "Returned work still contributes to total dedicated time",
+    8 / 6,
+    "Partial and returned work both contribute to total dedicated time",
   );
   const evidenceTask = op();
   await api.createWorkTask(admin, plan, evidenceTask, op());
