@@ -3,6 +3,8 @@ import { FarmLoader } from "@/components/farm-loader";
 import { getWorkerDailyAvailability } from "@/lib/workforce-availability";
 import { workerActivityIndicators } from "@/lib/workforce-indicators";
 import { accumulatedCrewQuantity } from "@/lib/workforce-review-total";
+import { OperationalAlerts } from "./operational-alerts";
+import { DailyPlanner } from "./daily-planner";
 import {
   useEffect,
   useRef,
@@ -164,9 +166,17 @@ export function FirebaseWorkforceBoard({
     action: "block" | "unblock" | "cancel";
   }>();
   const [query, setQuery] = useState("");
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const locked = useRef(false),
     operations = useRef(new Map<string, string>());
   const manager = canPlan(user.role);
+  useEffect(() => {
+    const interval = window.setInterval(() => setClockNow(Date.now()), 60000);
+    return () => window.clearInterval(interval);
+  }, []);
+  const nowParts = new Intl.DateTimeFormat("en-GB", { timeZone: "America/Managua", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(clockNow);
+  const currentMinutes = Number(nowParts.find((part) => part.type === "hour")?.value ?? 0) * 60 + Number(nowParts.find((part) => part.type === "minute")?.value ?? 0);
   const refresh = async () => {
     const result = await readWorkforce(user);
     setData(result);
@@ -455,6 +465,7 @@ export function FirebaseWorkforceBoard({
           <RefreshCw size={16} />
           <span className="sr-only">Actualizar tablero</span>
         </button>
+        {manager && <button className="f-button" disabled={!data || busy} onClick={() => setPlannerOpen(true)}>Proponer distribución</button>}
         {manager && (
           <button
             className="f-button f-primary"
@@ -473,6 +484,7 @@ export function FirebaseWorkforceBoard({
           {error}
         </p>
       )}
+      {data && <OperationalAlerts input={{ date: day || fincaDate(), today: fincaDate(), currentMinutes, workers, attendance, tasks: data.tasks, logs: data.logs, events: data.events }} onOpenTask={setSelected} canReadProjectGraphs={manager} />}
       {!data && !error && (
         <FarmLoader message="Cargando el trabajo registrado…" />
       )}
@@ -1100,6 +1112,7 @@ export function FirebaseWorkforceBoard({
           </form>
         </Modal>
       )}
+      {plannerOpen && data && <Modal title="Proponer distribución" close={() => setPlannerOpen(false)}><DailyPlanner user={user} date={day || fincaDate()} workers={workers} attendance={attendance} tasks={data.tasks} /></Modal>}
       {closing && (
         <CloseForm
           task={closing}

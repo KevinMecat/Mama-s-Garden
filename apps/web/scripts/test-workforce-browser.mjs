@@ -7,6 +7,7 @@ import { doc, setDoc, getDoc, getDocs, collection } from "firebase/firestore";
 
 // Synthetic fixtures are confined to a demo-* project on loopback emulators.
 const projectId = "demo-workforce-browser";
+const fixtureDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Managua", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const env = await initializeTestEnvironment({
   projectId,
   storage: { host: "127.0.0.1", port: 9398, rules: fs.readFileSync("../../firebase/storage.rules", "utf8") },
@@ -64,6 +65,10 @@ await env.withSecurityRulesDisabled(async (c) => {
   await setDoc(doc(db, "workforce_accounts", accounts.worker), {
     workerId: "w1",
   });
+  await setDoc(doc(db, "workforce_profiles", "w1"), {
+    workerId: "w1", competencies: { mantenimiento: "autonomous" }, revision: 1,
+    lastOperationId: "fixture-profile", updatedBy: accounts.admin,
+  });
   await setDoc(doc(db, "microbusinesses", "u1"), {
     name: "Unidad sintética",
     status: "active",
@@ -81,7 +86,7 @@ await env.withSecurityRulesDisabled(async (c) => {
   });
   await setDoc(doc(db, "attendance", "a1"), {
     workerId: "w1",
-    date: "2026-10-27",
+    date: fixtureDay,
     status: "present",
   });
 });
@@ -98,7 +103,8 @@ try {
     page = await context.newPage(),
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.setDefaultTimeout(20000);
+  // Webpack can take longer on the first cold compilation on a local machine.
+  page.setDefaultTimeout(60000);
   const base = "http://127.0.0.1:3004";
   async function login(role) {
     await page.goto(`${base}/login`);
@@ -127,10 +133,40 @@ try {
   await dialog.getByLabel("Meta numérica").fill("10");
   await dialog.getByLabel("Unidad de medida").fill("metros");
   await dialog.getByLabel("Horas previstas por persona").fill("2");
+  await dialog.getByLabel("Herramientas limitantes").fill("bomba");
   await dialog
     .getByRole("button", { name: "Crear tarea", exact: true })
     .click();
   await dialog.waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: "Proponer distribución", exact: true }).click();
+  const planner = page.getByRole("dialog", { name: "Proponer distribución", exact: true });
+  await planner.getByText(/Base: 2 h asignadas, 1\/1 tareas cubiertas, 0 h pendientes/).waitFor();
+  await planner.getByText(/Escenario: 2 h asignadas, 1\/1 tareas cubiertas, 0 h pendientes/).waitFor();
+  await planner.getByText("Simular cambios", { exact: true }).click();
+  await planner.getByLabel("bomba · cantidad").fill("0");
+  await planner.getByText(/Escenario: 0 h asignadas, 0\/1 tareas cubiertas, 2 h pendientes/).waitFor();
+  await planner.getByText(/herramienta bomba no disponible/).waitFor();
+  await planner.getByRole("button", { name: "Cerrar ventana" }).click();
+
+  await page.getByRole("button", { name: "Ver tarea", exact: true }).click();
+  const taskDetails = page.getByRole("dialog", { name: "Reparar riego sintético", exact: true });
+  await taskDetails.getByRole("button", { name: "Bloquear", exact: true }).click();
+  const blockDialog = page.getByRole("dialog", { name: "Bloquear tarea", exact: true });
+  await blockDialog.getByLabel("Motivo obligatorio").fill("Equipo de prueba no disponible");
+  await blockDialog.getByRole("button", { name: "Confirmar", exact: true }).click();
+  await blockDialog.waitFor({ state: "hidden" });
+  await taskDetails.getByRole("button", { name: "Cerrar ventana" }).click();
+  const operationalAlerts = page.getByRole("region", { name: /Alertas operativas/ });
+  await operationalAlerts.getByText("Tarea requiere atención · Reparar riego sintético", { exact: true }).waitFor();
+  await operationalAlerts.getByText(/bloqueada: Equipo de prueba no disponible/).waitFor();
+  await operationalAlerts.getByRole("button", { name: "Ver tarea", exact: true }).click();
+  await taskDetails.getByRole("button", { name: "Resolver bloqueo", exact: true }).click();
+  const unblockDialog = page.getByRole("dialog", { name: "Resolver bloqueo", exact: true });
+  await unblockDialog.getByLabel("Motivo obligatorio").fill("Equipo de prueba disponible");
+  await unblockDialog.getByRole("button", { name: "Confirmar", exact: true }).click();
+  await unblockDialog.waitFor({ state: "hidden" });
+  await taskDetails.getByRole("button", { name: "Cerrar ventana" }).click();
+  await operationalAlerts.getByText("Tarea requiere atención · Reparar riego sintético", { exact: true }).waitFor({ state: "hidden" });
   await page
     .getByRole("button", {
       name: "Iniciar Reparar riego sintético",
@@ -208,7 +244,7 @@ try {
   await photo.waitFor();
   await page.waitForFunction(() => { const img = document.querySelector('img[alt="Persona 1 Sintética"]'); return img?.naturalWidth > 0; });
   const secondCard = page.locator("article").filter({has:page.getByRole("heading",{name:"Persona 2 Sintética",exact:true})});
-  const day = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Managua",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  const day = fixtureDay;
   await page.clock.setFixedTime(new Date(`${day}T07:15:00-06:00`));
   await secondCard.getByRole("button",{name:"Registrar entrada ahora",exact:true}).click();
   await secondCard.getByRole("button",{name:"Entrada registrada",exact:true}).waitFor();
@@ -321,7 +357,7 @@ try {
     const history = await getDocs(
       collection(c.firestore(), "workforce_history"),
     );
-    assert.equal(history.size, 4);
+    assert.equal(history.size, 6);
   });
   assert.deepEqual(errors, []);
   console.log(
