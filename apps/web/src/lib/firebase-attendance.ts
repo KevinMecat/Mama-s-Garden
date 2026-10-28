@@ -15,8 +15,13 @@ export const attendanceStates = {
   present: "Presente",
   late: "Tarde",
   half: "Medio día",
-  absent: "Ausente",
+  absent: "Ausencia injustificada",
+  excused: "Ausencia justificada",
+  leave: "Permiso",
+  sick: "Incapacidad médica",
+  rest: "Descanso programado",
 } as const;
+export const isAbsence = (status: string) => ["absent", "excused", "leave", "sick", "rest"].includes(status);
 export type AttendancePlan = {
   workerId: string;
   date: string;
@@ -83,7 +88,7 @@ export function validateAttendance(row: AttendancePlan) {
   )
     throw Error("El descanso debe ser de 0 a 240 minutos.");
   if (
-    row.status === "absent" &&
+    isAbsence(row.status) &&
     (row.arrival || row.departure || row.nextDay || row.breakMinutes)
   )
     throw Error("Una ausencia no puede registrar horas trabajadas.");
@@ -216,6 +221,7 @@ export async function saveAttendance(
       actorLabel: user.first_name || user.role_label || "Cuenta autorizada",
       reason: reason.trim(),
       fingerprint,
+      previousValue: previous.exists() ? previous.data() : null,
       record: payload,
       createdAt: serverTimestamp(),
     });

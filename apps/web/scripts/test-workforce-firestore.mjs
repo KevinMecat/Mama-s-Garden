@@ -544,6 +544,12 @@ try {
   );
   const revisions = await att.attendanceHistory(admin, "w1", entry.date);
   assert.equal(revisions.length, 2);
+  assert.equal(revisions[0].previousValue.arrival, "07:00");
+  assert.equal(revisions[0].record.departure, "16:00");
+  for (const status of ["excused", "leave", "sick", "rest"]) {
+    att.validateAttendance({ ...entry, status, arrival: "" });
+    assert.throws(() => att.validateAttendance({ ...entry, status }));
+  }
   await assertFails(
     store.updateDoc(
       store.doc(db, "workforce_attendance_history", revisions[0].id),
