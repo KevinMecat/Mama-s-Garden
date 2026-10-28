@@ -2,7 +2,7 @@
 // Not connected to live data or production writes.
 import solver from "javascript-lp-solver";
 
-export function solvePrototype({ workers, tasks, slots, fixed = [] }) {
+export function solvePrototype({ workers, tasks, slots, fixed = [], toolCapacities = {} }) {
   if (!Number.isInteger(slots) || slots < 1 || slots > 24 || workers.length > 12 || tasks.length > 30)
     throw new Error("Dimensiones fuera del límite del prototipo.");
   const constraints = {}, variables = {}, binaries = {};
@@ -20,7 +20,11 @@ export function solvePrototype({ workers, tasks, slots, fixed = [] }) {
     constraints[`need_${j}`] = { max: task.hours };
     for (let k = 0; k < slots; k++) {
       constraints[`supervision_${j}_${k}`] = { max: 0 };
-      if (task.tool) constraints[`tool_${task.tool}_${k}`] = { max: 1 };
+      if (task.tool) {
+        const capacity = toolCapacities[task.tool] ?? 1;
+        if (!Number.isInteger(capacity) || capacity < 0 || capacity > 100) throw new Error("Cantidad de herramientas inválida.");
+        constraints[`tool_${task.tool}_${k}`] = { max: capacity };
+      }
     }
     for (let i = 0; i < workers.length; i++) {
       const skill = workers[i].skills[task.activity];

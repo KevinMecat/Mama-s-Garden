@@ -18,4 +18,6 @@ const absentFixed = solvePrototype({ workers: people, tasks, slots: 2, fixed: [{
 assert.equal(absentFixed.feasible, false, "An absent worker cannot be fixed to a task");
 assert.throws(() => solvePrototype({ workers: people, tasks, slots: 2, fixed: [{workerId:"missing",taskId:"one",slot:0}] }), /inválida/);
 assert.throws(() => solvePrototype({ workers: [{...people[0], availableHours: -1}], tasks, slots: 2 }), /inválidas/);
+const noTools = solvePrototype({ workers: people, tasks, slots: 2, toolCapacities: {tijera:0} });
+assert.equal(noTools.assignments.length, 0, "Unavailable tools prevent assignment");
 console.log("PASS isolated planner prototype: capacity, priority, absence, supervision and shared tool.");

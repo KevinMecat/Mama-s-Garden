@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import ts from "typescript";
+import { solvePrototype } from "../src/lib/planner-prototype.mjs";
+
+const source = fs.readFileSync("src/workers/daily-planner.worker.ts", "utf8");
+const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+const responses = [];
+const self = { postMessage: (result) => responses.push(result) };
+new Function("self", "require", "exports", compiled)(self, () => ({ solvePrototype }), {});
+const workers = [{ id: "w1", present: true, availableHours: 1, skills: { riego: "independent" } }];
+const tasks = [{ id: "t1", activity: "riego", hours: 1, priority: 1, tool: "bomba" }];
+const run = (data) => { self.onmessage({ data }); return responses.pop(); };
+const base = run({ workers, tasks, slots: 2 });
+assert.equal(base.result.feasible, true);
+assert.equal(base.result.assignments.length, 2);
+const noTool = run({ workers, tasks, slots: 2, toolCapacities: { bomba: 0 } });
+assert.equal(noTool.result.feasible, true);
+assert.equal(noTool.result.assignments.length, 0);
+const noPerson = run({ workers: workers.map((person) => ({ ...person, present: false })), tasks, slots: 2 });
+assert.equal(noPerson.result.assignments.length, 0);
+const conflicting = run({ workers, tasks: [...tasks, { ...tasks[0], id: "t2" }], slots: 2, fixed: [{ workerId: "w1", taskId: "t1", slot: 0 }, { workerId: "w1", taskId: "t2", slot: 0 }] });
+assert.equal(conflicting.result.feasible, false);
+assert.match(run({ workers, tasks, slots: 25 }).error, /límite/);
+console.log("PASS isolated worker: baseline, zero tool capacity, absence, conflicting fixed work and errors.");
