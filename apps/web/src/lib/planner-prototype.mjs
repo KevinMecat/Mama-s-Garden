@@ -2,10 +2,14 @@
 // Not connected to live data or production writes.
 import solver from "javascript-lp-solver";
 
-export function solvePrototype({ workers, tasks, slots }) {
+export function solvePrototype({ workers, tasks, slots, fixed = [] }) {
   if (!Number.isInteger(slots) || slots < 1 || slots > 24 || workers.length > 12 || tasks.length > 30)
     throw new Error("Dimensiones fuera del límite del prototipo.");
   const constraints = {}, variables = {}, binaries = {};
+  if (new Set(workers.map((worker) => worker.id)).size !== workers.length || new Set(tasks.map((task) => task.id)).size !== tasks.length)
+    throw new Error("Los identificadores deben ser únicos.");
+  if (workers.some((worker) => !Number.isFinite(worker.availableHours) || worker.availableHours < 0) || tasks.some((task) => !Number.isFinite(task.hours) || task.hours <= 0 || !Number.isFinite(task.priority) || task.priority <= 0))
+    throw new Error("Capacidades y prioridades inválidas.");
   const add = (name, variable, coefficient) => { variable[name] = (variable[name] ?? 0) + coefficient; };
   for (let i = 0; i < workers.length; i++) {
     constraints[`hours_${i}`] = { max: workers[i].availableHours };
@@ -39,6 +43,17 @@ export function solvePrototype({ workers, tasks, slots }) {
         add(link, variables[id], 1); add(link, v, -1);
       }
     }
+  }
+  for (const assignment of fixed) {
+    const i = workers.findIndex((worker) => worker.id === assignment.workerId);
+    const j = tasks.findIndex((task) => task.id === assignment.taskId);
+    if (i < 0 || j < 0 || !Number.isInteger(assignment.slot) || assignment.slot < 0 || assignment.slot >= slots)
+      throw new Error("Asignación fija inválida.");
+    const id = `x_${i}_${j}_${assignment.slot}`;
+    if (!variables[id]) return { feasible: false, assignments: [] };
+    const constraint = `fixed_${i}_${j}_${assignment.slot}`;
+    constraints[constraint] = { equal: 1 };
+    add(constraint, variables[id], 1);
   }
   const result = solver.Solve({ optimize: "objective", opType: "max", constraints, variables, binaries, options: { timeout: 1000 } });
   if (!result.feasible) return { feasible: false, assignments: [] };
